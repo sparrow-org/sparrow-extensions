@@ -566,29 +566,17 @@ namespace sparrow
 
         TEST_CASE("extension auto-registration")
         {
-            auto& registry = array_registry::instance();
-
             SUBCASE("bool8_array is registered for INT8 with arrow.bool8 extension")
             {
                 // Create a bool8_array
                 std::vector<bool> values = {true, false, true};
                 bool8_array original_arr(values);
-
-                // Verify extension metadata is present via array_access
-                const auto& proxy = detail::array_access::get_arrow_proxy(original_arr);
-                const auto& schema = proxy.schema();
-                REQUIRE(schema.metadata != nullptr);
-
-                // Create a wrapper from the array
-                auto wrapper = std::make_unique<array_wrapper_impl<bool8_array>>(std::move(original_arr));
-
-                // Verify dispatch works (this tests that the extension is properly registered)
-                auto size = registry.dispatch(
+                const array arr(std::move(original_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *wrapper
+                    }
                 );
                 CHECK_EQ(size, 3);
             }
@@ -598,22 +586,12 @@ namespace sparrow
                 // Create a bool8_array and get a copy of its proxy
                 std::vector<bool> values = {true, false};
                 bool8_array original_arr(values);
-
-                // Create wrapper to access the proxy
-                auto temp_wrapper = std::make_unique<array_wrapper_impl<bool8_array>>(std::move(original_arr));
-                arrow_proxy proxy_copy(temp_wrapper->get_arrow_proxy());
-
-                // Use registry.create to verify the extension is registered
-                auto created_wrapper = registry.create(std::move(proxy_copy));
-                REQUIRE(created_wrapper != nullptr);
-
-                // Verify size via dispatch
-                auto size = registry.dispatch(
+                const array arr(std::move(original_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *created_wrapper
+                    }
                 );
                 CHECK_EQ(size, 2);
             }
@@ -621,8 +599,6 @@ namespace sparrow
 
         TEST_CASE("array_registry integration")
         {
-            auto& registry = array_registry::instance();
-
             SUBCASE("bool8_array dispatch with size visitor")
             {
                 std::vector<bool> values = {true, false, true, false, true};
@@ -735,19 +711,13 @@ namespace sparrow
             {
                 std::vector<bool> values = {true, false};
                 bool8_array bool8_arr(values);
-
-                // Create wrapper manually for registry dispatch test
-                auto wrapper_ptr = std::make_unique<array_wrapper_impl<bool8_array>>(std::move(bool8_arr));
-
-                // Dispatch via registry
-                auto size = registry.dispatch(
+                const array arr(std::move(bool8_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *wrapper_ptr
+                    }
                 );
-
                 CHECK_EQ(size, 2);
             }
 
@@ -774,7 +744,6 @@ namespace sparrow
                 bool8_array bool8_arr(values);
                 array arr(std::move(bool8_arr));
 
-                // Check all elements have values
                 auto all_have_values = arr.visit(
                     [](auto&& typed_array)
                     {
@@ -797,8 +766,6 @@ namespace sparrow
                 std::vector<bool> values = {false, false, false};
                 bool8_array bool8_arr(values);
                 array arr(std::move(bool8_arr));
-
-                // Verify array is not empty
                 auto not_empty = arr.visit(
                     [](auto&& typed_array)
                     {

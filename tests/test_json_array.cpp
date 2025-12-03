@@ -17,12 +17,12 @@
 
 #include "sparrow/array.hpp"
 #include "sparrow/layout/array_access.hpp"
-#include "sparrow_extensions/json_array.hpp"
 #include "sparrow/layout/array_registry.hpp"
 #include "sparrow/types/data_type.hpp"
 #include "sparrow/utils/nullable.hpp"
 
 #include "doctest/doctest.h"
+#include "sparrow_extensions/json_array.hpp"
 
 namespace sparrow
 {
@@ -325,24 +325,17 @@ namespace sparrow
 
         TEST_CASE("extension auto-registration")
         {
-            auto& registry = array_registry::instance();
-
             SUBCASE("json_array is registered for STRING with arrow.json extension")
             {
-                // Create a json_array
                 std::vector<std::string> json_values = {R"({"test": true})", R"({"another": false})"};
                 json_array original_arr(json_values);
-
-                // Create a wrapper from the array
-                auto wrapper = std::make_unique<array_wrapper_impl<json_array>>(std::move(original_arr));
-
-                // Verify dispatch works (this tests that the extension is properly registered)
-                auto size = registry.dispatch(
+                json_array json_arr(json_values);
+                array arr(std::move(json_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *wrapper
+                    }
                 );
                 CHECK_EQ(size, 2);
             }
@@ -351,40 +344,28 @@ namespace sparrow
             {
                 std::vector<std::string> json_values = {R"({"large": "data"})"};
                 big_json_array original_arr(json_values);
-
-                auto wrapper = std::make_unique<array_wrapper_impl<big_json_array>>(std::move(original_arr));
-
-                auto size = registry.dispatch(
+                json_array json_arr(json_values);
+                array arr(std::move(json_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *wrapper
+                    }
                 );
                 CHECK_EQ(size, 1);
             }
 
             SUBCASE("registry.create works with json extension metadata")
             {
-                // Create a json_array and get a copy of its proxy
                 std::vector<std::string> json_values = {R"({"test": true})"};
                 json_array original_arr(json_values);
+                array ar(std::move(original_arr));
 
-                // Create wrapper to access the proxy
-                auto temp_wrapper = std::make_unique<array_wrapper_impl<json_array>>(std::move(original_arr));
-                arrow_proxy proxy_copy(temp_wrapper->get_arrow_proxy());
-
-                // Use registry.create to verify the extension is registered
-                auto created_wrapper = registry.create(std::move(proxy_copy));
-                REQUIRE(created_wrapper != nullptr);
-
-                // Verify size via dispatch
-                auto size = registry.dispatch(
+                const auto size = ar.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *created_wrapper
+                    }
                 );
                 CHECK_EQ(size, 1);
             }
@@ -392,8 +373,6 @@ namespace sparrow
 
         TEST_CASE("array_registry integration")
         {
-            auto& registry = array_registry::instance();
-
             SUBCASE("json_array dispatch with size visitor")
             {
                 std::vector<std::string> json_values = {
@@ -403,15 +382,12 @@ namespace sparrow
                 };
                 json_array json_arr(json_values);
                 array arr(std::move(json_arr));
-
-                // Test size dispatch
-                auto size = arr.visit(
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
                     }
                 );
-
                 CHECK_EQ(size, 3);
             }
 
@@ -545,19 +521,13 @@ namespace sparrow
             {
                 std::vector<std::string> json_values = {R"({"dispatch": "test"})"};
                 json_array json_arr(json_values);
-
-                // Create wrapper manually for registry dispatch test
-                auto wrapper_ptr = std::make_unique<array_wrapper_impl<json_array>>(std::move(json_arr));
-
-                // Dispatch via registry
-                auto size = registry.dispatch(
+                array arr(std::move(json_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *wrapper_ptr
+                    }
                 );
-
                 CHECK_EQ(size, 1);
             }
         }

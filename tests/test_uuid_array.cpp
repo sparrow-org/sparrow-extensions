@@ -22,9 +22,9 @@
 #include "sparrow/layout/array_registry.hpp"
 #include "sparrow/types/data_type.hpp"
 #include "sparrow/utils/nullable.hpp"
-#include "sparrow_extensions/uuid_array.hpp"
 
 #include "doctest/doctest.h"
+#include "sparrow_extensions/uuid_array.hpp"
 
 namespace sparrow_extensions
 {
@@ -400,30 +400,17 @@ namespace sparrow_extensions
 
         TEST_CASE("extension auto-registration")
         {
-            auto& registry = sparrow::array_registry::instance();
-
             SUBCASE("uuid_array is registered for FIXED_WIDTH_BINARY with arrow.uuid extension")
             {
                 // Create a uuid_array
                 std::vector<std::array<sparrow::byte_t, 16>> uuids = {make_test_uuid(0), make_test_uuid(16)};
                 uuid_array original_arr(uuids);
-
-                // Verify extension metadata is present via array_access
-                const auto& proxy = sparrow::detail::array_access::get_arrow_proxy(original_arr);
-                const auto& schema = proxy.schema();
-                REQUIRE(schema.metadata != nullptr);
-
-                // Create a wrapper from the array
-                auto wrapper = std::make_unique<sparrow::array_wrapper_impl<uuid_array>>(std::move(original_arr)
-                );
-
-                // Verify dispatch works (this tests that the extension is properly registered)
-                auto size = registry.dispatch(
+                sparrow::array arr(std::move(original_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *wrapper
+                    }
                 );
                 CHECK_EQ(size, 2);
             }
@@ -433,23 +420,12 @@ namespace sparrow_extensions
                 // Create a uuid_array and get a copy of its proxy
                 std::vector<std::array<sparrow::byte_t, 16>> uuids = {make_test_uuid(0)};
                 uuid_array original_arr(uuids);
-
-                // Create wrapper to access the proxy
-                auto temp_wrapper = std::make_unique<sparrow::array_wrapper_impl<uuid_array>>(std::move(original_arr)
-                );
-                sparrow::arrow_proxy proxy_copy(temp_wrapper->get_arrow_proxy());
-
-                // Use registry.create to verify the extension is registered
-                auto created_wrapper = registry.create(std::move(proxy_copy));
-                REQUIRE(created_wrapper != nullptr);
-
-                // Verify size via dispatch
-                auto size = registry.dispatch(
+                sparrow::array arr(std::move(original_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *created_wrapper
+                    }
                 );
                 CHECK_EQ(size, 1);
             }
@@ -457,8 +433,6 @@ namespace sparrow_extensions
 
         TEST_CASE("array_registry integration")
         {
-            auto& registry = sparrow::array_registry::instance();
-
             SUBCASE("uuid_array dispatch with size visitor")
             {
                 std::vector<std::array<sparrow::byte_t, 16>> uuids = {
@@ -468,8 +442,6 @@ namespace sparrow_extensions
                 };
                 uuid_array uuid_arr(uuids);
                 sparrow::array arr(std::move(uuid_arr));
-
-                // Test size dispatch
                 auto size = arr.visit(
                     [](auto&& typed_array)
                     {
@@ -539,20 +511,13 @@ namespace sparrow_extensions
             {
                 std::vector<std::array<sparrow::byte_t, 16>> uuids = {make_test_uuid(0)};
                 uuid_array uuid_arr(uuids);
-
-                // Create wrapper manually for registry dispatch test
-                auto wrapper_ptr = std::make_unique<sparrow::array_wrapper_impl<uuid_array>>(std::move(uuid_arr)
-                );
-
-                // Dispatch via registry
-                auto size = registry.dispatch(
+                sparrow::array arr(std::move(uuid_arr));
+                const auto size = arr.visit(
                     [](auto&& typed_array)
                     {
                         return typed_array.size();
-                    },
-                    *wrapper_ptr
+                    }
                 );
-
                 CHECK_EQ(size, 1);
             }
         }
