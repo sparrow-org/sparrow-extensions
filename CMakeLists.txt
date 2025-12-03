@@ -209,6 +209,11 @@ target_compile_definitions(sparrow-extensions PUBLIC ${SPARROW_EXTENSIONS_COMPIL
 set_property(TARGET sparrow-extensions PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 if(UNIX)
+    # CMake does not compute the version number of so files as libtool
+    # does on Linux. Strictly speaking, we should exclude FreeBSD and
+    # Apple from this, but that would require having different version
+    # numbers depending on the platform. We prefer to follow the
+    # libtool pattern everywhere.
     math(EXPR SPARROW_EXTENSIONS_BINARY_COMPATIBLE "${SPARROW_EXTENSIONS_BINARY_CURRENT} - ${SPARROW_EXTENSIONS_BINARY_AGE}")
     set_target_properties(
         sparrow-extensions

@@ -16,35 +16,59 @@ jobs:
       fail-fast: false
       matrix:
         compiler: [clang, gcc]
-        version: [13, 14, 18, 19, 20]
+        version: [11, 12, 13, 14, 17, 18, 19, 20]
         os: [ubuntu-24.04]
         config: [Debug, Release]
         cpp_standard: [20]
         shared: [ON, OFF]
         exclude:
           - compiler: clang
+            version: 11
+          - compiler: clang
+            version: 12
+          - compiler: clang
             version: 13
           - compiler: clang
             version: 14
+          - compiler: gcc
+            version: 17
           - compiler: gcc
             version: 18
           - compiler: gcc
             version: 19
           - compiler: gcc
             version: 20
+          - compiler: gcc
+            version: 11
+            date-polyfill: OFF
+          - compiler: gcc
+            version: 12
+            date-polyfill: OFF
         include:
+          - compiler: gcc
+            version: 13
+            os: ubuntu-24.04
+            arch: 32
+            config: Release
+            date-polyfill: OFF
+            shared: OFF
+            cpp_standard: 20
           - compiler: gcc
             version: 14
             os: ubuntu-24.04
+            arch: 64
             config: Release
+            date-polyfill: OFF
+            shared: OFF
             cpp_standard: 23
-            shared: ON
           - compiler: clang
             version: 20
             os: ubuntu-24.04
+            arch: 64
             config: Release
+            date-polyfill: OFF
+            shared: OFF
             cpp_standard: 23
-            shared: ON
            
     runs-on: ${{ matrix.os }}
     name: ${{matrix.os}} / ${{ matrix.compiler }} / ${{ matrix.version }} / ${{ matrix.config }} / cpp${{ matrix.cpp_standard }} / shared ${{ matrix.shared }}
@@ -88,7 +112,7 @@ jobs:
         sudo update-alternatives --set clang-scan-deps /usr/bin/clang-scan-deps-${{matrix.version}}
 
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set conda environment
       uses: mamba-org/setup-micromamba@main
