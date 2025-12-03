@@ -1,0 +1,122 @@
+name: Windows
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.job }}-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash -e -l {0}
+jobs:
+  build:
+    runs-on: ${{ matrix.runs-on }}
+    name: ${{ matrix.toolchain.compiler }} / ${{ matrix.build-system.name }} / ${{ matrix.config.name }} / targets ${{ matrix.target-arch.name }} / shared ${{ matrix.toolchain.shared }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [windows-latest]
+        toolchain:
+        - {compiler: msvc, shared: 'ON'}
+        - {compiler: msvc, shared: 'OFF'}
+        target-arch:
+        - {
+            name: "Win64",
+            vs-flags: "-A x64",
+            cl-flags: "/arch (x64)",
+            gnu-flags: "-m64",
+            msvc-dev-cmd: "win64"
+          }
+        config:
+        - {name: Debug}
+        - {name: Release}
+        build-system:
+        - {name: "Visual Studio 17 2022"}
+        - {name: "Ninja"}
+
+    steps:
+    - name: Setup MSVC (only for non-VS buildsystems)
+      if: matrix.toolchain.compiler == 'msvc' && !startsWith(matrix.build-system.name, 'Visual Studio')
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{matrix.target-arch.msvc-dev-cmd}}
+
+    - name: Setup gnu compilers
+      if: matrix.toolchain.compiler != 'msvc'
+      run: |
+        echo "CMAKE_CXX_FLAGS=${{matrix.target-arch.gnu-flags}}" >> $GITHUB_ENV
+        echo "CMAKE_CXX_LINK_FLAGS=${{matrix.target-arch.gnu-flags}}" >> $GITHUB_ENV
+
+    - name: Setup Ninja + msvc
+      if: matrix.toolchain.compiler == 'msvc' && matrix.build-system.name == 'Ninja'
+      run: |
+        echo "CMAKE_CXX_FLAGS=${{matrix.target-arch.cl-flags}}" >> $GITHUB_ENV
+        echo "CMAKE_CXX_LINK_FLAGS=${{matrix.target-arch.cl-flags}}" >> $GITHUB_ENV
+
+    - name: Setup Visual Studio
+      if: startsWith(matrix.build-system.name, 'Visual Studio')
+      run: |
+        echo "GENERATOR_EXTRA_FLAGS=${{matrix.target-arch.vs-flags}}" >> $GITHUB_ENV
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ matrix.toolchain.compiler }}_${{ matrix.build-system.name }}_${{ matrix.config.name }}_targets_${{ matrix.target-arch.name }}_shared_${{ matrix.toolchain.shared}}_ccache
+
+    - name: Set conda environment
+      if: matrix.target-arch.name == 'Win64'
+      uses: mamba-org/setup-micromamba@main
+      with:
+        environment-name: myenv
+        environment-file: environment-dev.yml
+        init-shell: bash
+        cache-downloads: true
+        create-args: |
+          ninja
+
+    - name: Set dependencies install prefix dir for 64bit
+      if: matrix.target-arch.name == 'Win64'
+      run: |
+        echo "SPARROW_EXTENSIONS_DEPS_PREFIX=$CONDA_PREFIX" >> $GITHUB_ENV
+        echo "SPARROW_EXTENSIONS_INSTALL_PREFIX=$CONDA_PREFIX" >> $GITHUB_ENV
+        echo "SPARROW_EXTENSIONS_ADDITIONAL_OPTIONS=-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL" >> $GITHUB_ENV
+
+    - name: Set CMake generator environment variable
+      run: |
+        echo "CMAKE_GENERATOR=${{ matrix.build-system.name }}" >> $GITHUB_ENV
+
+    - name: Configure using CMake
+      run: |
+        cmake -S ./ -B ./build \
+        -DCMAKE_BUILD_TYPE:STRING=${{matrix.config.name}} \
+        -DCMAKE_PREFIX_PATH=$SPARROW_EXTENSIONS_DEPS_PREFIX \
+        -DCMAKE_INSTALL_PREFIX=$SPARROW_EXTENSIONS_INSTALL_PREFIX \
+        -DSPARROW_EXTENSIONS_BUILD_TESTS=ON \
+        $GENERATOR_EXTRA_FLAGS \
+        $SPARROW_EXTENSIONS_ADDITIONAL_OPTIONS \
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+        -DFETCH_DEPENDENCIES_WITH_CMAKE=MISSING \
+        -DSPARROW_EXTENSIONS_BUILD_SHARED=${{matrix.toolchain.shared}} \
+
+
+    - name: Build library
+      working-directory: build
+      run: cmake --build . --config ${{matrix.config.name}} --target sparrow-extensions
+
+    - name: Build tests
+      working-directory: build
+      run: cmake --build . --config ${{matrix.config.name}} --target test_sparrow_extensions_lib
+
+    - name: Run tests
+      working-directory: build
+      run: cmake --build . --config ${{matrix.config.name}} --target run_sparrow_extensions_tests
+
+    - name: Install
+      working-directory: build
+      run: cmake --install . --config ${{matrix.config.name}}

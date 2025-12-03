@@ -1,0 +1,85 @@
+name: OSX
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.job }}-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash -e -l {0}
+jobs:
+  build:
+    runs-on: macos-${{ matrix.os }}
+    name: ${{ matrix.os }} / ${{ matrix.config.name }} / ${{ matrix.compiler }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - 14
+          - 15
+        config:
+          - { name: Debug }
+          - { name: Release }
+        compiler:
+          - clang
+          - apple-clang
+        exclude:
+          - os: 14
+            compiler: apple-clang
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.os }}_${{ matrix.config.name }}_${{ matrix.compiler }}_ccache
+
+      - name: Add specification of clang++ in the conda environment specification
+        if: matrix.compiler == 'clang'
+        run: |
+          echo "  - cxx-compiler" >> environment-dev.yml
+
+      - name: Set conda environment
+        uses: mamba-org/setup-micromamba@main
+        with:
+          environment-name: myenv
+          environment-file: environment-dev.yml
+          init-shell: bash
+          cache-downloads: true
+
+      - name: Use clang++ from conda-forge
+        if: matrix.compiler == 'clang'
+        run: |
+          echo "CXX=$CONDA_PREFIX/bin/clang++" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER=$CONDA_PREFIX/bin/clang++" >> $GITHUB_ENV
+
+      - name: Configure using CMake
+        run: |
+          cmake -Bbuild \
+          -DCMAKE_BUILD_TYPE:STRING=${{matrix.config.name}} \
+          -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
+          -DSPARROW_EXTENSIONS_BUILD_TESTS=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+          -DFETCH_DEPENDENCIES_WITH_CMAKE=MISSING
+
+      - name: Build
+        working-directory: build
+        run: cmake --build . --config ${{matrix.config.name}} --target sparrow-extensions --parallel 8
+
+      - name: Build tests
+        working-directory: build
+        run: cmake --build . --config ${{matrix.config.name}} --target test_sparrow_extensions_lib --parallel 8
+
+      - name: Run tests
+        working-directory: build
+        run: cmake --build . --config ${{matrix.config.name}} --target run_sparrow_extensions_tests
+
+      - name: Install
+        working-directory: build
+        run: cmake --install . --config ${{matrix.config.name}}
