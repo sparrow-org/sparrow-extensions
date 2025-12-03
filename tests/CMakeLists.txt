@@ -34,7 +34,10 @@ endif()
   
 set(SPARROW_EXTENSIONS_TESTS_SOURCES
     main.cpp
+    test_bool8_array.cpp
+    test_json_array.cpp
     test_uuid_array.cpp
+    metadata_sample.hpp
 )
 
 set(test_target "test_sparrow_extensions_lib")

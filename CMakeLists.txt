@@ -179,6 +179,8 @@ set(SPARROW_EXTENSIONS_HEADERS
 
     # ./
     ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/uuid_array.hpp
+    ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/json_array.hpp
+    ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/bool8_array.hpp
 
     #../
     # ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions.hpp
