@@ -17,6 +17,7 @@
 #include "sparrow/utils/extension.hpp"
 #include "sparrow/variable_size_binary_array.hpp"
 #include "sparrow/variable_size_binary_view_array.hpp"
+#include "sparrow_extensions/config/config.hpp"
 
 namespace sparrow
 {

@@ -14,18 +14,7 @@
 
 #pragma once
 
-#if defined(__apple_build_version__)
-#    define COMPILING_WITH_APPLE_CLANG 1
-#else
-#    define COMPILING_WITH_APPLE_CLANG 0
-#endif
-
-#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 170000
-#    define USING_LIBCPP_PRE_17 1
-#else
-#    define USING_LIBCPP_PRE_17 0
-#endif
-
+// DLL export/import macros for Windows
 #if defined(_WIN32)
 #    if defined(SPARROW_EXTENSIONS_STATIC_LIB)
 #        define SPARROW_EXTENSIONS_API
@@ -37,11 +26,6 @@
 #else
 #    define SPARROW_EXTENSIONS_API __attribute__((visibility("default")))
 #endif
-
-[[nodiscard]] consteval bool is_apple_compiler()
-{
-    return static_cast<bool>(COMPILING_WITH_APPLE_CLANG);
-}
 
 // If using gcc version < 12, we define the constexpr keyword to be empty.
 #if defined(__GNUC__) && __GNUC__ < 12

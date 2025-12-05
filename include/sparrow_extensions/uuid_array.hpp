@@ -19,6 +19,7 @@
 
 #include "sparrow/fixed_width_binary_array.hpp"
 #include "sparrow/utils/contracts.hpp"
+#include "sparrow_extensions/config/config.hpp"
 
 namespace sparrow_extensions
 {
@@ -83,6 +84,7 @@ namespace sparrow_extensions
         sparrow::fixed_width_binary_traits::value_type,
         sparrow::fixed_width_binary_traits::const_reference,
         uuid_extension>;
+
 }  // namespace sparrow_extensions
 
 namespace sparrow::detail

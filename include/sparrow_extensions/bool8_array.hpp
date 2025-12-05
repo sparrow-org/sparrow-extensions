@@ -16,6 +16,7 @@
 
 #include "sparrow/primitive_array.hpp"
 #include "sparrow/utils/extension.hpp"
+#include "sparrow_extensions/config/config.hpp"
 
 namespace sparrow
 {
