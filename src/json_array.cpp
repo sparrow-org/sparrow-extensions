@@ -18,7 +18,7 @@
 
 namespace sparrow::detail
 {
-    const bool json_arrays_registered = []()
+    SPARROW_EXTENSIONS_API const bool json_arrays_registered = []()
     {
         auto& registry = array_registry::instance();
 

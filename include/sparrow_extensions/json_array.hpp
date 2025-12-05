@@ -17,7 +17,7 @@
 #include "sparrow/utils/extension.hpp"
 #include "sparrow/variable_size_binary_array.hpp"
 #include "sparrow/variable_size_binary_view_array.hpp"
-#include "sparrow/utils/extension.hpp"
+#include "sparrow_extensions/config/config.hpp"
 
 namespace sparrow
 {
@@ -126,6 +126,6 @@ namespace sparrow
     namespace detail
     {
         // Registration is defined in json_array.cpp
-        extern const bool json_arrays_registered;
+        SPARROW_EXTENSIONS_API extern const bool json_arrays_registered;
     }  // namespace detail
 }

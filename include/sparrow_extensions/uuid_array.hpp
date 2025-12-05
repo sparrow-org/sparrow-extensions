@@ -19,6 +19,7 @@
 
 #include "sparrow/fixed_width_binary_array.hpp"
 #include "sparrow/utils/contracts.hpp"
+#include "sparrow_extensions/config/config.hpp"
 
 namespace sparrow_extensions
 {
@@ -87,7 +88,7 @@ namespace sparrow_extensions
     namespace detail
     {
         // Registration is defined in uuid_array.cpp
-        extern const bool uuid_array_registered;
+        SPARROW_EXTENSIONS_API extern const bool uuid_array_registered;
     }  // namespace detail
 }  // namespace sparrow_extensions
 

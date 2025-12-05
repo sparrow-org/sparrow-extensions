@@ -16,6 +16,7 @@
 
 #include "sparrow/primitive_array.hpp"
 #include "sparrow/utils/extension.hpp"
+#include "sparrow_extensions/config/config.hpp"
 
 namespace sparrow
 {
@@ -40,7 +41,7 @@ namespace sparrow
     namespace detail
     {
         // Registration is defined in bool8_array.cpp
-        extern const bool bool8_array_registered;
+        SPARROW_EXTENSIONS_API extern const bool bool8_array_registered;
     }  // namespace detail
 }
 

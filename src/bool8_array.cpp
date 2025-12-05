@@ -18,7 +18,7 @@
 
 namespace sparrow::detail
 {
-    const bool bool8_array_registered = []()
+    SPARROW_EXTENSIONS_API const bool bool8_array_registered = []()
     {
         auto& registry = array_registry::instance();
 
