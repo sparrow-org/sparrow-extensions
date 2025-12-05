@@ -44,8 +44,8 @@ jobs:
         shell: bash
         run: |
           CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
-          if ! [[ "$CUSTOM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: custom_version must be in semver format (X.Y.Z), got: $CUSTOM_VERSION"
+          if ! [[ "$CUSTOM_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Error: custom_version must be in semver format (X.Y.Z) with no leading zeros, got: $CUSTOM_VERSION"
             exit 1
           fi
           echo "Custom version format is valid: $CUSTOM_VERSION"
@@ -118,7 +118,7 @@ jobs:
             else
               # Get the highest prerelease number and increment
               LAST_TAG=$(echo "$EXISTING_TAGS" | tail -n 1)
-              PRERELEASE_NUM=$(echo "$LAST_TAG" | sed "s/${BASE_VERSION}_r//" | sed 's/^0*//')
+              PRERELEASE_NUM=$(echo "$LAST_TAG" | sed "s/${BASE_VERSION}_r//" | sed 's/^0*\([0-9]\+\)$/\1/')
               if [ -z "$PRERELEASE_NUM" ]; then
                 PRERELEASE_NUM=0
               fi
@@ -245,8 +245,15 @@ jobs:
           # Push the tag
           echo "Pushing tag ${{ steps.version.outputs.version }}..."
           if ! git push origin "${{ steps.version.outputs.version }}"; then
-            echo "Error: Failed to push tag. Rolling back branch push if possible..."
-            # Note: Branch push already succeeded, manual cleanup may be needed
+            echo "Error: Failed to push tag. Attempting to roll back branch push..."
+            # Attempt automatic rollback of the version bump commit
+            if git push origin ":$CURRENT_BRANCH" && git push origin "$CURRENT_BRANCH~1:$CURRENT_BRANCH" --force; then
+              echo "Automatic rollback of branch push succeeded. Please verify the branch state."
+            else
+              echo "Automatic rollback failed. Manual cleanup is required:"
+              echo "1. Delete the latest commit from branch $CURRENT_BRANCH (the version bump)."
+              echo "2. Force-push the previous commit to $CURRENT_BRANCH."
+            fi
             exit 1
           fi
       
