@@ -126,6 +126,6 @@ namespace sparrow
     namespace detail
     {
         // Registration is defined in json_array.cpp
-        SPARROW_EXTENSIONS_API extern const bool json_arrays_registered;
-    }  // namespace detail
+        extern const bool json_arrays_registered;
+    }
 }

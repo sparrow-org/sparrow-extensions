@@ -88,8 +88,8 @@ namespace sparrow_extensions
     namespace detail
     {
         // Registration is defined in uuid_array.cpp
-        SPARROW_EXTENSIONS_API extern const bool uuid_array_registered;
-    }  // namespace detail
+        extern const bool uuid_array_registered;
+    }
 }  // namespace sparrow_extensions
 
 namespace sparrow::detail

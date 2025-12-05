@@ -41,8 +41,8 @@ namespace sparrow
     namespace detail
     {
         // Registration is defined in bool8_array.cpp
-        SPARROW_EXTENSIONS_API extern const bool bool8_array_registered;
-    }  // namespace detail
+        extern const bool bool8_array_registered;
+    }
 }
 
 #if defined(__cpp_lib_format)
