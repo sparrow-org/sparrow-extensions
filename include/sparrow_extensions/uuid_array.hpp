@@ -85,11 +85,6 @@ namespace sparrow_extensions
         sparrow::fixed_width_binary_traits::const_reference,
         uuid_extension>;
 
-    namespace detail
-    {
-        // Registration is defined in uuid_array.cpp
-        extern const bool uuid_array_registered;
-    }
 }  // namespace sparrow_extensions
 
 namespace sparrow::detail

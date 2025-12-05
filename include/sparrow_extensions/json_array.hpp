@@ -122,10 +122,4 @@ namespace sparrow
             }
         };
     }
-
-    namespace detail
-    {
-        // Registration is defined in json_array.cpp
-        extern const bool json_arrays_registered;
-    }
 }
