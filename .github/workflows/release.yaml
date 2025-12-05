@@ -13,7 +13,7 @@ on:
           - minor
           - major
       custom_version:
-        description: 'Custom version (optional, overrides version_type)'
+        description: 'Custom version (optional, overrides version_type, must be semver format: X.Y.Z)'
         required: false
         type: string
       prerelease:
@@ -21,6 +21,10 @@ on:
         required: false
         default: false
         type: boolean
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -33,22 +37,49 @@ jobs:
         uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 # Fetch all history and tags
+      
+      - name: Validate custom version format
+        if: ${{ github.event.inputs.custom_version != '' }}
+        shell: bash
+        run: |
+          CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+          if ! [[ "$CUSTOM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: custom_version must be in semver format (X.Y.Z), got: $CUSTOM_VERSION"
+            exit 1
+          fi
+          echo "Custom version format is valid: $CUSTOM_VERSION"
+      
+      - name: Configure git
+        shell: bash
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
       
       - name: Determine version
         id: version
+        shell: bash
         run: |
+          VERSION_FILE="include/sparrow_extensions/config/sparrow_extensions_version.hpp"
+          
+          # Helper function to extract version number from header file
+          extract_version() {
+            local var_name="$1"
+            grep -oP "constexpr int ${var_name} = \K[0-9]+" "$VERSION_FILE"
+          }
+          
           if [ -n "${{ github.event.inputs.custom_version }}" ]; then
             BASE_VERSION="${{ github.event.inputs.custom_version }}"
           else
             # Get current version from header file
-            if [ ! -f "include/sparrow_extensions/config/sparrow_extensions_version.hpp" ]; then
+            if [ ! -f "$VERSION_FILE" ]; then
               echo "Error: sparrow_extensions_version.hpp not found"
               exit 1
             fi
             
-            CURRENT_MAJOR=$(grep "constexpr int SPARROW_EXTENSIONS_VERSION_MAJOR" include/sparrow_extensions/config/sparrow_extensions_version.hpp | awk '{print $5}' | tr -d ';')
-            CURRENT_MINOR=$(grep "constexpr int SPARROW_EXTENSIONS_VERSION_MINOR" include/sparrow_extensions/config/sparrow_extensions_version.hpp | awk '{print $5}' | tr -d ';')
-            CURRENT_PATCH=$(grep "constexpr int SPARROW_EXTENSIONS_VERSION_PATCH" include/sparrow_extensions/config/sparrow_extensions_version.hpp | awk '{print $5}' | tr -d ';')
+            CURRENT_MAJOR=$(extract_version "SPARROW_EXTENSIONS_VERSION_MAJOR")
+            CURRENT_MINOR=$(extract_version "SPARROW_EXTENSIONS_VERSION_MINOR")
+            CURRENT_PATCH=$(extract_version "SPARROW_EXTENSIONS_VERSION_PATCH")
             
             # Verify version numbers were found
             if [ -z "$CURRENT_MAJOR" ] || [ -z "$CURRENT_MINOR" ] || [ -z "$CURRENT_PATCH" ]; then
@@ -57,6 +88,11 @@ jobs:
             fi
             
             echo "Current version: ${CURRENT_MAJOR}.${CURRENT_MINOR}.${CURRENT_PATCH}"
+            
+            # Export for later steps
+            echo "current_major=$CURRENT_MAJOR" >> $GITHUB_OUTPUT
+            echo "current_minor=$CURRENT_MINOR" >> $GITHUB_OUTPUT
+            echo "current_patch=$CURRENT_PATCH" >> $GITHUB_OUTPUT
             
             case "${{ github.event.inputs.version_type }}" in
               "major")
@@ -101,73 +137,162 @@ jobs:
           echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
       
       - name: Update version in header file
+        if: ${{ steps.version.outputs.is_prerelease == 'false' }}
+        shell: bash
         run: |
+          VERSION_FILE="include/sparrow_extensions/config/sparrow_extensions_version.hpp"
           BASE_VERSION="${{ steps.version.outputs.base_version }}"
           IFS='.' read -r NEW_MAJOR NEW_MINOR NEW_PATCH <<< "$BASE_VERSION"
           
-          # Only update header file for non-prerelease versions
-          if [ "${{ steps.version.outputs.is_prerelease }}" = "false" ]; then
-            # Get current binary version numbers
-            CURRENT_BINARY=$(grep "constexpr int SPARROW_EXTENSIONS_BINARY_CURRENT" include/sparrow_extensions/config/sparrow_extensions_version.hpp | awk '{print $5}' | tr -d ';')
-            CURRENT_REVISION=$(grep "constexpr int SPARROW_EXTENSIONS_BINARY_REVISION" include/sparrow_extensions/config/sparrow_extensions_version.hpp | awk '{print $5}' | tr -d ';')
-            CURRENT_AGE=$(grep "constexpr int SPARROW_EXTENSIONS_BINARY_AGE" include/sparrow_extensions/config/sparrow_extensions_version.hpp | awk '{print $5}' | tr -d ';')
-            
-            echo "Current binary version: $CURRENT_BINARY:$CURRENT_REVISION:$CURRENT_AGE"
-            
-            # Apply libtool versioning rules based on version bump type
-            case "${{ github.event.inputs.version_type }}" in
-              "patch")
-                # Patch release: only increment revision (compatible changes)
-                NEW_BINARY_CURRENT=$CURRENT_BINARY
-                NEW_BINARY_REVISION=$((CURRENT_REVISION + 1))
-                NEW_BINARY_AGE=$CURRENT_AGE
-                ;;
-              "minor")
-                # Minor release: new APIs added, increment current and age, reset revision
-                NEW_BINARY_CURRENT=$((CURRENT_BINARY + 1))
-                NEW_BINARY_REVISION=0
-                NEW_BINARY_AGE=$((CURRENT_AGE + 1))
-                ;;
-              "major")
-                # Major release: breaking changes, increment current, reset revision and age
-                NEW_BINARY_CURRENT=$((CURRENT_BINARY + 1))
-                NEW_BINARY_REVISION=0
-                NEW_BINARY_AGE=0
-                ;;
-            esac
-            
-            echo "New binary version: $NEW_BINARY_CURRENT:$NEW_BINARY_REVISION:$NEW_BINARY_AGE"
-            
-            # Update version numbers in header file
-            sed -i "s/constexpr int SPARROW_EXTENSIONS_VERSION_MAJOR = [0-9]*/constexpr int SPARROW_EXTENSIONS_VERSION_MAJOR = $NEW_MAJOR/" include/sparrow_extensions/config/sparrow_extensions_version.hpp
-            sed -i "s/constexpr int SPARROW_EXTENSIONS_VERSION_MINOR = [0-9]*/constexpr int SPARROW_EXTENSIONS_VERSION_MINOR = $NEW_MINOR/" include/sparrow_extensions/config/sparrow_extensions_version.hpp
-            sed -i "s/constexpr int SPARROW_EXTENSIONS_VERSION_PATCH = [0-9]*/constexpr int SPARROW_EXTENSIONS_VERSION_PATCH = $NEW_PATCH/" include/sparrow_extensions/config/sparrow_extensions_version.hpp
-            sed -i "s/constexpr int SPARROW_EXTENSIONS_BINARY_CURRENT = [0-9]*/constexpr int SPARROW_EXTENSIONS_BINARY_CURRENT = $NEW_BINARY_CURRENT/" include/sparrow_extensions/config/sparrow_extensions_version.hpp
-            sed -i "s/constexpr int SPARROW_EXTENSIONS_BINARY_REVISION = [0-9]*/constexpr int SPARROW_EXTENSIONS_BINARY_REVISION = $NEW_BINARY_REVISION/" include/sparrow_extensions/config/sparrow_extensions_version.hpp
-            sed -i "s/constexpr int SPARROW_EXTENSIONS_BINARY_AGE = [0-9]*/constexpr int SPARROW_EXTENSIONS_BINARY_AGE = $NEW_BINARY_AGE/" include/sparrow_extensions/config/sparrow_extensions_version.hpp
-            
-            git config --local user.name "GitHub Action"
-            git add include/sparrow_extensions/config/sparrow_extensions_version.hpp
-            git commit -m "Release version ${{ steps.version.outputs.version }}"
-          else
-            echo "Skipping header file update for prerelease"
-            git config --local user.name "GitHub Action"
+          # Helper function to extract version number from header file
+          extract_version() {
+            local var_name="$1"
+            grep -oP "constexpr int ${var_name} = \K[0-9]+" "$VERSION_FILE"
+          }
+          
+          # Get current version for comparison (use outputs if available, otherwise re-extract)
+          CURRENT_MAJOR="${{ steps.version.outputs.current_major }}"
+          CURRENT_MINOR="${{ steps.version.outputs.current_minor }}"
+          CURRENT_PATCH="${{ steps.version.outputs.current_patch }}"
+          
+          if [ -z "$CURRENT_MAJOR" ]; then
+            CURRENT_MAJOR=$(extract_version "SPARROW_EXTENSIONS_VERSION_MAJOR")
+            CURRENT_MINOR=$(extract_version "SPARROW_EXTENSIONS_VERSION_MINOR")
+            CURRENT_PATCH=$(extract_version "SPARROW_EXTENSIONS_VERSION_PATCH")
           fi
+          
+          # Determine effective version bump type
+          if [ -n "${{ github.event.inputs.custom_version }}" ]; then
+            # Auto-detect bump type from custom version
+            if [ "$NEW_MAJOR" -gt "$CURRENT_MAJOR" ]; then
+              EFFECTIVE_BUMP_TYPE="major"
+            elif [ "$NEW_MINOR" -gt "$CURRENT_MINOR" ]; then
+              EFFECTIVE_BUMP_TYPE="minor"
+            else
+              EFFECTIVE_BUMP_TYPE="patch"
+            fi
+            echo "Custom version detected bump type: $EFFECTIVE_BUMP_TYPE"
+          else
+            EFFECTIVE_BUMP_TYPE="${{ github.event.inputs.version_type }}"
+          fi
+          
+          # Get current binary version numbers
+          CURRENT_BINARY=$(extract_version "SPARROW_EXTENSIONS_BINARY_CURRENT")
+          CURRENT_REVISION=$(extract_version "SPARROW_EXTENSIONS_BINARY_REVISION")
+          CURRENT_AGE=$(extract_version "SPARROW_EXTENSIONS_BINARY_AGE")
+          
+          if [ -z "$CURRENT_BINARY" ] || [ -z "$CURRENT_REVISION" ] || [ -z "$CURRENT_AGE" ]; then  
+            echo "Error: Could not parse current binary version from header file"  
+            exit 1  
+          fi  
+          echo "Current binary version: $CURRENT_BINARY:$CURRENT_REVISION:$CURRENT_AGE"
+          
+          # Apply libtool versioning rules based on effective version bump type
+          case "$EFFECTIVE_BUMP_TYPE" in
+            "patch")
+              # Patch release: only increment revision (compatible changes)
+              NEW_BINARY_CURRENT=$CURRENT_BINARY
+              NEW_BINARY_REVISION=$((CURRENT_REVISION + 1))
+              NEW_BINARY_AGE=$CURRENT_AGE
+              ;;
+            "minor")
+              # Minor release: new APIs added, increment current and age, reset revision
+              NEW_BINARY_CURRENT=$((CURRENT_BINARY + 1))
+              NEW_BINARY_REVISION=0
+              NEW_BINARY_AGE=$((CURRENT_AGE + 1))
+              ;;
+            "major")
+              # Major release: breaking changes, increment current, reset revision and age
+              NEW_BINARY_CURRENT=$((CURRENT_BINARY + 1))
+              NEW_BINARY_REVISION=0
+              NEW_BINARY_AGE=0
+              ;;
+          esac
+          
+          echo "New binary version: $NEW_BINARY_CURRENT:$NEW_BINARY_REVISION:$NEW_BINARY_AGE"
+          
+          # Update version numbers in header file
+          sed -i "s/constexpr int SPARROW_EXTENSIONS_VERSION_MAJOR = [0-9]*/constexpr int SPARROW_EXTENSIONS_VERSION_MAJOR = $NEW_MAJOR/" "$VERSION_FILE"
+          sed -i "s/constexpr int SPARROW_EXTENSIONS_VERSION_MINOR = [0-9]*/constexpr int SPARROW_EXTENSIONS_VERSION_MINOR = $NEW_MINOR/" "$VERSION_FILE"
+          sed -i "s/constexpr int SPARROW_EXTENSIONS_VERSION_PATCH = [0-9]*/constexpr int SPARROW_EXTENSIONS_VERSION_PATCH = $NEW_PATCH/" "$VERSION_FILE"
+          sed -i "s/constexpr int SPARROW_EXTENSIONS_BINARY_CURRENT = [0-9]*/constexpr int SPARROW_EXTENSIONS_BINARY_CURRENT = $NEW_BINARY_CURRENT/" "$VERSION_FILE"
+          sed -i "s/constexpr int SPARROW_EXTENSIONS_BINARY_REVISION = [0-9]*/constexpr int SPARROW_EXTENSIONS_BINARY_REVISION = $NEW_BINARY_REVISION/" "$VERSION_FILE"
+          sed -i "s/constexpr int SPARROW_EXTENSIONS_BINARY_AGE = [0-9]*/constexpr int SPARROW_EXTENSIONS_BINARY_AGE = $NEW_BINARY_AGE/" "$VERSION_FILE"
+          
+          git add "$VERSION_FILE"
+          git commit -m "Release version ${{ steps.version.outputs.version }}"
       
       - name: Create tag
+        shell: bash
         run: |
           git tag -a "${{ steps.version.outputs.version }}" -m "Release version ${{ steps.version.outputs.version }}"
       
       - name: Push changes and tag
+        shell: bash
         run: |
-          git push origin main
-          git push origin "${{ steps.version.outputs.version }}"
+          # Push to the current branch (not hardcoded to main)
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          
+          # Only push branch if we made a commit (non-prerelease)
+          if [ "${{ steps.version.outputs.is_prerelease }}" = "false" ]; then
+            echo "Pushing version commit to $CURRENT_BRANCH..."
+            if ! git push origin "$CURRENT_BRANCH"; then
+              echo "Error: Failed to push to $CURRENT_BRANCH"
+              exit 1
+            fi
+          fi
+          
+          # Push the tag
+          echo "Pushing tag ${{ steps.version.outputs.version }}..."
+          if ! git push origin "${{ steps.version.outputs.version }}"; then
+            echo "Error: Failed to push tag. Rolling back branch push if possible..."
+            # Note: Branch push already succeeded, manual cleanup may be needed
+            exit 1
+          fi
+      
+      - name: Generate release notes
+        id: release_notes
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          IS_PRERELEASE="${{ steps.version.outputs.is_prerelease }}"
+          
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Generating changelog from $PREVIOUS_TAG to $VERSION"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" "$PREVIOUS_TAG"..HEAD 2>/dev/null || echo "")
+          else
+            echo "No previous tag found, using recent commits"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" -10 2>/dev/null || echo "")
+          fi
+          
+          # Build release body
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            BODY="## ⚠️ Pre-release\n\nThis is a pre-release version for testing purposes.\n\n"
+          else
+            BODY=""
+          fi
+          
+          if [ -n "$CHANGELOG" ]; then
+            BODY="${BODY}## What's Changed\n\n${CHANGELOG}"
+          else
+            BODY="${BODY}Release version ${VERSION}"
+          fi
+          
+          # Escape for GitHub Actions output
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Create GitHub Release
-        uses: elgohr/Github-Release-Action@v5
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Release ${{ steps.version.outputs.version }}"
+          body: ${{ steps.release_notes.outputs.body }}
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          title: "Release ${{ steps.version.outputs.version }}"
-          tag: "${{ steps.version.outputs.version }}"
-          prerelease: ${{ steps.version.outputs.is_prerelease }}
