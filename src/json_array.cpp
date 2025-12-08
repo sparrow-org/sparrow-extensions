@@ -18,8 +18,6 @@
 
 #include "sparrow_extensions/config/config.hpp"
 
-#include "sparrow_extensions/config/config.hpp"
-
 namespace sparrow_extensions::detail
 {
     SPARROW_EXTENSIONS_API const bool json_arrays_registered = []()
