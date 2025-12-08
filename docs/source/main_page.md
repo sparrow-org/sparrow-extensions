@@ -21,3 +21,7 @@ This software is licensed under the Apache License 2.0. See the LICENSE file for
 
 \subpage uuid_array
 
+\subpage json_array
+
+\subpage bool8_array
+

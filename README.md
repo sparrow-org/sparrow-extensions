@@ -1,9 +1,9 @@
 # sparrow-extensions
 
-[![GHA Linux](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/linux.yml/badge.svg)](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/linux.yml)
-[![GHA OSX](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/osx.yml/badge.svg)](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/osx.yml)
-[![GHA Windows](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/windows.yml/badge.svg)](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/windows.yml)
-[![GHA Docs](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/deploy-pages.yaml/badge.svg)](https://github.com/Alex-PLACET/sparrow-extensions/actions/workflows/deploy-pages.yaml)
+[![GHA Linux](https://github.com/QuantStack/sparrow-extensions/actions/workflows/linux.yml/badge.svg)](https://github.com/QuantStack/sparrow-extensions/actions/workflows/linux.yml)
+[![GHA OSX](https://github.com/QuantStack/sparrow-extensions/actions/workflows/osx.yml/badge.svg)](https://github.com/QuantStack/sparrow-extensions/actions/workflows/osx.yml)
+[![GHA Windows](https://github.com/QuantStack/sparrow-extensions/actions/workflows/windows.yml/badge.svg)](https://github.com/QuantStack/sparrow-extensions/actions/workflows/windows.yml)
+[![GHA Docs](https://github.com/QuantStack/sparrow-extensions/actions/workflows/deploy-pages.yaml/badge.svg)](https://github.com/QuantStack/sparrow-extensions/actions/workflows/deploy-pages.yaml)
 
 Extension types for the [sparrow](https://github.com/man-group/sparrow) library
 
@@ -15,8 +15,9 @@ Extension types for the [sparrow](https://github.com/man-group/sparrow) library
 
 ### Available Extensions
 
-- **UUID Array**: Arrow-compatible array for storing UUID values as 16-byte fixed-width binary according to the `arrow.uuid` extension type specification.
-
+- `uuid_array`: Arrow-compatible array for storing UUID values as 16-byte fixed-width binary according to the `arrow.uuid` extension type specification.
+- `json_array`: Arrow-compatible array for storing JSON values as UTF-8 strings according to the `arrow.json` extension type specification.
+- `bool8_array`: Arrow-compatible array for storing boolean values as 8-bit integers according to the `arrow.bool8` extension type specification.
 ## Installation
 
 ### Install from sources
@@ -49,19 +50,6 @@ Compilers:
 - GCC 11.2 or higher
 - Apple Clang 16 or higher
 - MSVC 19.41 or higher
-
-### UUID Array
-
-```cpp
-#include "sparrow_extensions/uuid_array.hpp"
-namespace spx = sparrow_extensions;
-
-// Create a UUID array using the Arrow extension type
-spx::uuid_array uuids = /* ... */;
-
-// UUIDs are stored as 16-byte fixed-width binary values
-// with extension metadata "ARROW:extension:name" = "arrow.uuid"
-```
 
 ## Dependencies
 
