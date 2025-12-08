@@ -16,6 +16,8 @@
 
 #include "sparrow/layout/array_registry.hpp"
 
+#include "sparrow_extensions/config/config.hpp"
+
 namespace sparrow::detail
 {
     SPARROW_EXTENSIONS_API const bool uuid_array_registered = []()
@@ -35,4 +37,4 @@ namespace sparrow::detail
 
         return true;
     }();
-}  // namespace sparrow::detail
+}

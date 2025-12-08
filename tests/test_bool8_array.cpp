@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include <ranges>
-#include <vector>
 
-#include "sparrow/array.hpp"
-#include "sparrow/layout/array_access.hpp"
+#include <doctest/doctest.h>
 
-#include "doctest/doctest.h"
+#include <sparrow/array.hpp>
+
 #include "metadata_sample.hpp"
 #include "sparrow_extensions/bool8_array.hpp"
 
-namespace sparrow
+using namespace sparrow;
+
+namespace sparrow_extensions
 {
     TEST_SUITE("bool8_array")
     {

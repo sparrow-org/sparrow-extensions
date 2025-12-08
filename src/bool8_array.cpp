@@ -16,23 +16,25 @@
 
 #include "sparrow/layout/array_registry.hpp"
 
-namespace sparrow::detail
+#include "sparrow_extensions/config/config.hpp"
+
+namespace sparrow_extensions::detail
 {
     SPARROW_EXTENSIONS_API const bool bool8_array_registered = []()
     {
-        auto& registry = array_registry::instance();
+        auto& registry = sparrow::array_registry::instance();
 
         registry.register_extension(
-            data_type::INT8,
+            sparrow::data_type::INT8,
             "arrow.bool8",
-            [](arrow_proxy proxy)
+            [](sparrow::arrow_proxy proxy)
             {
-                return cloning_ptr<array_wrapper>{
-                    new array_wrapper_impl<bool8_array>(bool8_array(std::move(proxy)))
+                return sparrow::cloning_ptr<sparrow::array_wrapper>{
+                    new sparrow::array_wrapper_impl<bool8_array>(bool8_array(std::move(proxy)))
                 };
             }
         );
 
         return true;
     }();
-}  // namespace sparrow::detail
+}

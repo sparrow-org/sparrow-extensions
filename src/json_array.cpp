@@ -14,52 +14,54 @@
 
 #include "sparrow_extensions/json_array.hpp"
 
-#include "sparrow/layout/array_registry.hpp"
+#include <sparrow/layout/array_registry.hpp>
 
-namespace sparrow::detail
+#include "sparrow_extensions/config/config.hpp"
+
+namespace sparrow_extensions::detail
 {
     SPARROW_EXTENSIONS_API const bool json_arrays_registered = []()
     {
-        auto& registry = array_registry::instance();
+        auto& registry = sparrow::array_registry::instance();
 
         constexpr std::string_view extension_name = "arrow.json";
 
         // Register json_array (STRING base type)
         registry.register_extension(
-            data_type::STRING,
+            sparrow::data_type::STRING,
             extension_name,
-            [](arrow_proxy proxy)
+            [](sparrow::arrow_proxy proxy)
             {
-                return cloning_ptr<array_wrapper>{
-                    new array_wrapper_impl<json_array>(json_array(std::move(proxy)))
+                return sparrow::cloning_ptr<sparrow::array_wrapper>{
+                    new sparrow::array_wrapper_impl<json_array>(json_array(std::move(proxy)))
                 };
             }
         );
 
         // Register big_json_array (LARGE_STRING base type)
         registry.register_extension(
-            data_type::LARGE_STRING,
+            sparrow::data_type::LARGE_STRING,
             extension_name,
-            [](arrow_proxy proxy)
+            [](sparrow::arrow_proxy proxy)
             {
-                return cloning_ptr<array_wrapper>{
-                    new array_wrapper_impl<big_json_array>(big_json_array(std::move(proxy)))
+                return sparrow::cloning_ptr<sparrow::array_wrapper>{
+                    new sparrow::array_wrapper_impl<big_json_array>(big_json_array(std::move(proxy)))
                 };
             }
         );
 
         // Register json_view_array (STRING_VIEW base type)
         registry.register_extension(
-            data_type::STRING_VIEW,
+            sparrow::data_type::STRING_VIEW,
             extension_name,
-            [](arrow_proxy proxy)
+            [](sparrow::arrow_proxy proxy)
             {
-                return cloning_ptr<array_wrapper>{
-                    new array_wrapper_impl<json_view_array>(json_view_array(std::move(proxy)))
+                return sparrow::cloning_ptr<sparrow::array_wrapper>{
+                    new sparrow::array_wrapper_impl<json_view_array>(json_view_array(std::move(proxy)))
                 };
             }
         );
 
         return true;
     }();
-}  // namespace sparrow::detail
+}

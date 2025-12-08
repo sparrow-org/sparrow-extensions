@@ -17,12 +17,11 @@
 #include "sparrow/utils/extension.hpp"
 #include "sparrow/variable_size_binary_array.hpp"
 #include "sparrow/variable_size_binary_view_array.hpp"
-#include "sparrow_extensions/config/config.hpp"
 
-namespace sparrow
+namespace sparrow_extensions
 {
 
-    using json_extension = simple_extension<"arrow.json">;
+    using json_extension = sparrow::simple_extension<"arrow.json">;
     /**
      * @brief JSON array with 32-bit offsets.
      *
@@ -41,9 +40,9 @@ namespace sparrow
      * @see big_json_array for larger datasets requiring 64-bit offsets
      * @see json_view_array for view-based storage
      */
-    using json_array = variable_size_binary_array_impl<
-        arrow_traits<std::string>::value_type,
-        arrow_traits<std::string>::const_reference,
+    using json_array = sparrow::variable_size_binary_array_impl<
+        sparrow::arrow_traits<std::string>::value_type,
+        sparrow::arrow_traits<std::string>::const_reference,
         std::int32_t,
         json_extension>;
 
@@ -64,9 +63,9 @@ namespace sparrow
      * @see json_array for smaller datasets with 32-bit offsets
      * @see json_view_array for view-based storage
      */
-    using big_json_array = variable_size_binary_array_impl<
-        arrow_traits<std::string>::value_type,
-        arrow_traits<std::string>::const_reference,
+    using big_json_array = sparrow::variable_size_binary_array_impl<
+        sparrow::arrow_traits<std::string>::value_type,
+        sparrow::arrow_traits<std::string>::const_reference,
         std::int64_t,
         json_extension>;
 
@@ -88,38 +87,38 @@ namespace sparrow
      * @see json_array for offset-based storage with 32-bit offsets
      * @see big_json_array for offset-based storage with 64-bit offsets
      */
-    using json_view_array = variable_size_binary_view_array_impl<
-        arrow_traits<std::string>::value_type,
-        arrow_traits<std::string>::const_reference,
+    using json_view_array = sparrow::variable_size_binary_view_array_impl<
+        sparrow::arrow_traits<std::string>::value_type,
+        sparrow::arrow_traits<std::string>::const_reference,
         json_extension>;
+}
 
-    namespace detail
+namespace sparrow::detail
+{
+    template <>
+    struct get_data_type_from_array<sparrow_extensions::json_array>
     {
-        template <>
-        struct get_data_type_from_array<sparrow::json_array>
+        [[nodiscard]] static constexpr sparrow::data_type get()
         {
-            [[nodiscard]] static constexpr sparrow::data_type get()
-            {
-                return sparrow::data_type::STRING;
-            }
-        };
+            return sparrow::data_type::STRING;
+        }
+    };
 
-        template <>
-        struct get_data_type_from_array<sparrow::big_json_array>
+    template <>
+    struct get_data_type_from_array<sparrow_extensions::big_json_array>
+    {
+        [[nodiscard]] static constexpr sparrow::data_type get()
         {
-            [[nodiscard]] static constexpr sparrow::data_type get()
-            {
-                return sparrow::data_type::LARGE_STRING;
-            }
-        };
+            return sparrow::data_type::LARGE_STRING;
+        }
+    };
 
-        template <>
-        struct get_data_type_from_array<sparrow::json_view_array>
+    template <>
+    struct get_data_type_from_array<sparrow_extensions::json_view_array>
+    {
+        [[nodiscard]] static constexpr sparrow::data_type get()
         {
-            [[nodiscard]] static constexpr sparrow::data_type get()
-            {
-                return sparrow::data_type::STRING_VIEW;
-            }
-        };
-    }
+            return sparrow::data_type::STRING_VIEW;
+        }
+    };
 }

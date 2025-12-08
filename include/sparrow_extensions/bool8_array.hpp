@@ -16,9 +16,8 @@
 
 #include "sparrow/primitive_array.hpp"
 #include "sparrow/utils/extension.hpp"
-#include "sparrow_extensions/config/config.hpp"
 
-namespace sparrow
+namespace sparrow_extensions
 {
     /**
      * @brief Bool8 array using 8-bit storage for boolean values.
@@ -36,7 +35,7 @@ namespace sparrow
      * - Extension metadata: empty string
      *
      */
-    using bool8_array = primitive_array<int8_t, simple_extension<"arrow.bool8">, bool>;
+    using bool8_array = sparrow::primitive_array<int8_t, sparrow::simple_extension<"arrow.bool8">, bool>;
 }
 
 #if defined(__cpp_lib_format)
@@ -44,14 +43,14 @@ namespace sparrow
 
 // Formatter specialization for bool8_array
 template <>
-struct std::formatter<sparrow::bool8_array>
+struct std::formatter<sparrow_extensions::bool8_array>
 {
     constexpr auto parse(std::format_parse_context& ctx)
     {
         return ctx.begin();
     }
 
-    auto format(const sparrow::bool8_array& ar, std::format_context& ctx) const
+    auto format(const sparrow_extensions::bool8_array& ar, std::format_context& ctx) const
     {
         std::format_to(ctx.out(), "Bool8 array [{}]: [", ar.size());
         for (std::size_t i = 0; i < ar.size(); ++i)
@@ -74,7 +73,7 @@ struct std::formatter<sparrow::bool8_array>
     }
 };
 
-namespace sparrow
+namespace sparrow_extensions
 {
     inline std::ostream& operator<<(std::ostream& os, const bool8_array& value)
     {

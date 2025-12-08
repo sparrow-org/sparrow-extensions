@@ -15,16 +15,17 @@
 #include <string>
 #include <vector>
 
-#include "sparrow/array.hpp"
-#include "sparrow/layout/array_access.hpp"
-#include "sparrow/layout/array_registry.hpp"
-#include "sparrow/types/data_type.hpp"
-#include "sparrow/utils/nullable.hpp"
+#include <doctest/doctest.h>
 
-#include "doctest/doctest.h"
+#include <sparrow/array.hpp>
+#include <sparrow/types/data_type.hpp>
+#include <sparrow/utils/nullable.hpp>
+
 #include "sparrow_extensions/json_array.hpp"
 
-namespace sparrow
+using namespace sparrow;
+
+namespace sparrow_extensions
 {
     TEST_SUITE("json_array")
     {

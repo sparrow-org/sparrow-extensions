@@ -19,7 +19,6 @@
 
 #include "sparrow/fixed_width_binary_array.hpp"
 #include "sparrow/utils/contracts.hpp"
-#include "sparrow_extensions/config/config.hpp"
 
 namespace sparrow_extensions
 {
@@ -97,4 +96,5 @@ namespace sparrow::detail
             return sparrow::data_type::FIXED_WIDTH_BINARY;
         }
     };
-}  // namespace sparrow::detail
+}
+
