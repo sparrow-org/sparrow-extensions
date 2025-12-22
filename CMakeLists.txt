@@ -182,9 +182,10 @@ set(SPARROW_EXTENSIONS_HEADERS
     ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/config/sparrow_extensions_version.hpp
 
     # ./
-    ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/uuid_array.hpp
-    ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/json_array.hpp
     ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/bool8_array.hpp
+    ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/fixed_shape_tensor.hpp
+    ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/json_array.hpp
+    ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions/uuid_array.hpp
 
     #../
     # ${SPARROW_EXTENSIONS_INCLUDE_DIR}/sparrow_extensions.hpp
@@ -192,6 +193,7 @@ set(SPARROW_EXTENSIONS_HEADERS
 
 set(SPARROW_EXTENSIONS_SRC
     ${SPARROW_EXTENSIONS_SOURCE_DIR}/bool8_array.cpp
+    ${SPARROW_EXTENSIONS_SOURCE_DIR}/fixed_shape_tensor.cpp
     ${SPARROW_EXTENSIONS_SOURCE_DIR}/json_array.cpp
     ${SPARROW_EXTENSIONS_SOURCE_DIR}/uuid_array.cpp
     ${SPARROW_EXTENSIONS_SOURCE_DIR}/variable_shape_tensor.cpp

@@ -35,6 +35,7 @@ endif()
 set(SPARROW_EXTENSIONS_TESTS_SOURCES
     main.cpp
     test_bool8_array.cpp
+    test_fixed_shape_tensor.cpp
     test_json_array.cpp
     test_uuid_array.cpp
     test_variable_shape_tensor.cpp
