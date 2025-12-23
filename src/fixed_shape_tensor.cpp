@@ -22,6 +22,7 @@
 #include "sparrow/layout/array_access.hpp"
 #include "sparrow/layout/array_registry.hpp"
 #include "sparrow/utils/contracts.hpp"
+#include "sparrow/array.hpp"
 
 #include "sparrow_extensions/config/config.hpp"
 
@@ -377,7 +378,7 @@ namespace sparrow_extensions
         sparrow::array&& flat_values,
         const metadata_type& tensor_metadata
     )
-        : m_storage(list_size, std::move(flat_values))
+        : m_storage(list_size, std::move(flat_values), std::vector<bool>{})
         , m_metadata(tensor_metadata)
     {
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
@@ -397,7 +398,7 @@ namespace sparrow_extensions
         std::string_view name,
         std::optional<std::vector<sparrow::metadata_pair>> arrow_metadata
     )
-        : m_storage(list_size, std::move(flat_values))
+        : m_storage(list_size, std::move(flat_values), std::vector<bool>{})
         , m_metadata(tensor_metadata)
     {
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());

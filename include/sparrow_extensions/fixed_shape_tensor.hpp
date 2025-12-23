@@ -21,7 +21,7 @@
 #include <string_view>
 #include <vector>
 
-#include "sparrow/buffer/dynamic_bitset/dynamic_bitset.hpp"  // Workaround for sparrow 2.0.0 bug
+#include "sparrow/buffer/dynamic_bitset/dynamic_bitset.hpp"
 #include "sparrow/list_array.hpp"
 #include "sparrow/types/data_type.hpp"
 
