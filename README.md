@@ -18,6 +18,8 @@ Extension types for the [sparrow](https://github.com/man-group/sparrow) library
 - `uuid_array`: Arrow-compatible array for storing UUID values as 16-byte fixed-width binary according to the `arrow.uuid` extension type specification.
 - `json_array`: Arrow-compatible array for storing JSON values as UTF-8 strings according to the `arrow.json` extension type specification.
 - `bool8_array`: Arrow-compatible array for storing boolean values as 8-bit integers according to the `arrow.bool8` extension type specification.
+- `fixed_shape_tensor_array`: Arrow-compatible array for storing fixed-shape tensors according to the `arrow.fixed_shape_tensor` extension type specification.
+
 ## Installation
 
 ### Install from sources
