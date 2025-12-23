@@ -19,6 +19,8 @@
 #include <sstream>
 #include <stdexcept>
 
+#include <simdjson.h>
+
 #include "sparrow/layout/array_access.hpp"
 #include "sparrow/layout/array_registry.hpp"
 #include "sparrow/utils/contracts.hpp"
@@ -28,6 +30,19 @@
 
 namespace sparrow_extensions
 {
+    namespace
+    {
+        // JSON serialization size estimation constants
+        constexpr std::size_t json_base_size = 10;              // {"shape":[]}
+        constexpr std::size_t json_integer_avg_size = 10;       // Average size per integer
+        constexpr std::size_t json_dim_names_overhead = 15;     // ,"dim_names":[]
+        constexpr std::size_t json_string_overhead = 3;         // "name",
+        constexpr std::size_t json_permutation_overhead = 17;   // ,"permutation":[]
+        
+        // JSON parsing capacity hints
+        constexpr std::size_t typical_tensor_dimensions = 8;    // Typical tensor rank (2-4 dims, reserve 8)
+    }
+
     // Metadata implementation
     bool fixed_shape_tensor_extension::metadata::is_valid() const
     {
@@ -52,13 +67,18 @@ namespace sparrow_extensions
                 return false;
             }
 
-            // Check that permutation contains exactly [0, 1, ..., N-1]
-            std::vector<std::int64_t> sorted_perm = perm;
-            std::ranges::sort(sorted_perm);
-            return std::ranges::equal(
-                sorted_perm,
-                std::views::iota(std::int64_t{0}, static_cast<std::int64_t>(sorted_perm.size()))
-            );
+            // Check that permutation contains exactly [0, 1, ..., N-1] without copying
+            // Use a bitset to track seen indices
+            std::vector<bool> seen(perm.size(), false);
+            for (const auto idx : perm)
+            {
+                if (idx < 0 || static_cast<std::size_t>(idx) >= perm.size() || seen[static_cast<std::size_t>(idx)])
+                {
+                    return false;
+                }
+                seen[static_cast<std::size_t>(idx)] = true;
+            }
+            return true;
         }
 
         return true;
@@ -66,241 +86,137 @@ namespace sparrow_extensions
 
     std::int64_t fixed_shape_tensor_extension::metadata::compute_size() const
     {
-        return std::accumulate(
+        return std::reduce(
             shape.begin(),
             shape.end(),
             std::int64_t{1},
-            std::multiplies<std::int64_t>{}
+            std::multiplies<>{}
         );
     }
 
     std::string fixed_shape_tensor_extension::metadata::to_json() const
     {
-        // Helper to serialize integer array
-        auto serialize_int_array = [](std::ostringstream& oss, const std::vector<std::int64_t>& arr)
+        // Pre-calculate approximate size to minimize allocations
+        std::size_t estimated_size = json_base_size;
+        estimated_size += shape.size() * json_integer_avg_size;
+        if (dim_names.has_value())
         {
-            oss << "[";
-            for (std::size_t i = 0; i < arr.size(); ++i)
+            estimated_size += json_dim_names_overhead;
+            for (const auto& name : *dim_names)
             {
-                if (i > 0) oss << ",";
-                oss << arr[i];
+                estimated_size += name.size() + json_string_overhead;
             }
-            oss << "]";
+        }
+        if (permutation.has_value())
+        {
+            estimated_size += json_permutation_overhead + permutation->size() * json_integer_avg_size;
+        }
+        
+        std::string result;
+        result.reserve(estimated_size);
+        
+        auto serialize_array = [&result](const auto& arr, auto&& formatter)
+        {
+            result += '[';
+            bool first = true;
+            for (const auto& item : arr)
+            {
+                if (!first) result += ',';
+                first = false;
+                formatter(item);
+            }
+            result += ']';
         };
 
-        std::ostringstream oss;
-        oss << "{\"shape\":";
-        serialize_int_array(oss, shape);
+        result += "{\"shape\":";
+        serialize_array(shape, [&result](const auto& val) { result += std::to_string(val); });
 
         if (dim_names.has_value())
         {
-            oss << ",\"dim_names\":[";
-            for (std::size_t i = 0; i < dim_names->size(); ++i)
-            {
-                if (i > 0) oss << ",";
-                oss << "\"" << (*dim_names)[i] << "\"";
-            }
-            oss << "]";
+            result += ",\"dim_names\":";
+            serialize_array(*dim_names, [&result](const auto& val) { 
+                result += '\"';
+                result += val;
+                result += '\"';
+            });
         }
 
         if (permutation.has_value())
         {
-            oss << ",\"permutation\":";
-            serialize_int_array(oss, *permutation);
+            result += ",\"permutation\":";
+            serialize_array(*permutation, [&result](const auto& val) { result += std::to_string(val); });
         }
 
-        oss << "}";
-        return oss.str();
+        result += '}';
+        return result;
     }
 
     fixed_shape_tensor_extension::metadata fixed_shape_tensor_extension::metadata::from_json(
         std::string_view json
     )
     {
-        metadata result;
-
-        // Simple JSON parser for the fixed structure we expect
-        // This is a minimal implementation - production code might use a proper JSON library
-
-        std::string json_str(json);
-        std::size_t pos = 0;
-
-        // Helper to skip whitespace
-        auto skip_whitespace = [&]()
+        auto parse_int_array = [](simdjson::ondemand::array arr) -> std::vector<std::int64_t>
         {
-            while (pos < json_str.size() && std::isspace(json_str[pos]))
+            std::vector<std::int64_t> result;
+            result.reserve(typical_tensor_dimensions);
+            for (auto value : arr)
             {
-                ++pos;
+                result.push_back(static_cast<std::int64_t>(value.get_int64()));
             }
+            return result;
         };
 
-        // Helper to read a string value
-        auto read_string = [&]() -> std::string
+        auto parse_string_array = [](simdjson::ondemand::array arr) -> std::vector<std::string>
         {
-            skip_whitespace();
-            if (pos >= json_str.size() || json_str[pos] != '"')
+            std::vector<std::string> result;
+            result.reserve(typical_tensor_dimensions);
+            for (auto value : arr)
             {
-                throw std::runtime_error("Expected opening quote");
+                result.emplace_back(value.get_string().value());
             }
-            ++pos;  // Skip opening quote
-
-            std::size_t start = pos;
-            while (pos < json_str.size() && json_str[pos] != '"')
-            {
-                ++pos;
-            }
-
-            if (pos >= json_str.size())
-            {
-                throw std::runtime_error("Expected closing quote");
-            }
-
-            std::string value = json_str.substr(start, pos - start);
-            ++pos;  // Skip closing quote
-            return value;
+            return result;
         };
 
-        // Helper to read an integer
-        auto read_int = [&]() -> std::int64_t
+        try
         {
-            skip_whitespace();
-            std::size_t start = pos;
-            if (pos < json_str.size() && (json_str[pos] == '-' || json_str[pos] == '+'))
+            metadata result;
+            
+            simdjson::ondemand::parser parser;
+            simdjson::padded_string padded_json(json);
+            simdjson::ondemand::document doc = parser.iterate(padded_json);
+            
+            // Parse shape (required)
+            result.shape = parse_int_array(doc["shape"].get_array());
+            
+            if (result.shape.empty())
             {
-                ++pos;
+                throw std::runtime_error("Missing required 'shape' field");
             }
-            while (pos < json_str.size() && std::isdigit(json_str[pos]))
+            
+            // Parse optional fields
+            auto dim_names_field = doc["dim_names"];
+            if (dim_names_field.error() == simdjson::SUCCESS)
             {
-                ++pos;
+                result.dim_names = parse_string_array(dim_names_field.get_array());
             }
-            return std::stoll(json_str.substr(start, pos - start));
-        };
-
-        // Generic helper to read an array
-        auto read_array = [&]<typename T>(auto reader) -> std::vector<T>
-        {
-            std::vector<T> arr;
-            skip_whitespace();
-            if (pos >= json_str.size() || json_str[pos] != '[')
+            
+            auto permutation_field = doc["permutation"];
+            if (permutation_field.error() == simdjson::SUCCESS)
             {
-                throw std::runtime_error("Expected opening bracket");
+                result.permutation = parse_int_array(permutation_field.get_array());
             }
-            ++pos;
-
-            skip_whitespace();
-            if (pos < json_str.size() && json_str[pos] == ']')
+            
+            if (!result.is_valid())
             {
-                ++pos;
-                return arr;
+                throw std::runtime_error("Invalid metadata");
             }
-
-            while (true)
-            {
-                arr.push_back(reader());
-                skip_whitespace();
-
-                if (pos >= json_str.size())
-                {
-                    throw std::runtime_error("Unexpected end of JSON");
-                }
-
-                if (json_str[pos] == ']')
-                {
-                    ++pos;
-                    break;
-                }
-
-                if (json_str[pos] != ',')
-                {
-                    throw std::runtime_error("Expected comma or closing bracket");
-                }
-                ++pos;
-            }
-
-            return arr;
-        };
-
-        auto read_int_array = [&]() { return read_array.template operator()<std::int64_t>(read_int); };
-        auto read_string_array = [&]() { return read_array.template operator()<std::string>(read_string); };
-
-        // Parse the JSON object
-        skip_whitespace();
-        if (pos >= json_str.size() || json_str[pos] != '{')
-        {
-            throw std::runtime_error("Expected opening brace");
+            
+            return result;
         }
-        ++pos;
-
-        while (true)
+        catch (const simdjson::simdjson_error& e)
         {
-            skip_whitespace();
-            if (pos >= json_str.size())
-            {
-                throw std::runtime_error("Unexpected end of JSON");
-            }
-
-            if (json_str[pos] == '}')
-            {
-                ++pos;
-                break;
-            }
-
-            std::string key = read_string();
-            skip_whitespace();
-
-            if (pos >= json_str.size() || json_str[pos] != ':')
-            {
-                throw std::runtime_error("Expected colon after key");
-            }
-            ++pos;
-
-            if (key == "shape")
-            {
-                result.shape = read_int_array();
-            }
-            else if (key == "dim_names")
-            {
-                result.dim_names = read_string_array();
-            }
-            else if (key == "permutation")
-            {
-                result.permutation = read_int_array();
-            }
-            else
-            {
-                throw std::runtime_error("Unknown key: " + key);
-            }
-
-            skip_whitespace();
-            if (pos >= json_str.size())
-            {
-                throw std::runtime_error("Unexpected end of JSON");
-            }
-
-            if (json_str[pos] == '}')
-            {
-                ++pos;
-                break;
-            }
-
-            if (json_str[pos] != ',')
-            {
-                throw std::runtime_error("Expected comma or closing brace");
-            }
-            ++pos;
+            throw std::runtime_error(std::string("JSON parsing error: ") + e.what());
         }
-
-        if (result.shape.empty())
-        {
-            throw std::runtime_error("Missing required 'shape' field");
-        }
-
-        if (!result.is_valid())
-        {
-            throw std::runtime_error("Invalid metadata");
-        }
-
-        return result;
     }
 
     void fixed_shape_tensor_extension::init(
@@ -311,36 +227,40 @@ namespace sparrow_extensions
         SPARROW_ASSERT_TRUE(tensor_metadata.is_valid());
 
         // Get existing metadata
-        std::optional<sparrow::key_value_view> existing_metadata = proxy.metadata();
-        std::vector<sparrow::metadata_pair> extension_metadata =
-            existing_metadata.has_value()
-                ? std::vector<sparrow::metadata_pair>(
-                      existing_metadata->begin(),
-                      existing_metadata->end()
-                  )
-                : std::vector<sparrow::metadata_pair>{};
-
-        // Check if extension metadata already exists
-        const bool has_extension_name = std::ranges::find_if(
-                                            extension_metadata,
-                                            [](const auto& pair)
-                                            {
-                                                return pair.first == "ARROW:extension:name"
-                                                       && pair.second == EXTENSION_NAME;
-                                            }
-                                        )
-                                        != extension_metadata.end();
-
-        if (!has_extension_name)
+        auto existing_metadata = proxy.metadata();
+        std::vector<sparrow::metadata_pair> extension_metadata;
+        
+        if (existing_metadata.has_value())
         {
-            extension_metadata.emplace_back("ARROW:extension:name", std::string(EXTENSION_NAME));
-            extension_metadata.emplace_back(
-                "ARROW:extension:metadata",
-                tensor_metadata.to_json()
-            );
+            extension_metadata.assign(existing_metadata->begin(), existing_metadata->end());
+            
+            // Check if extension metadata already exists
+            const bool has_extension_name = std::ranges::find_if(
+                                                extension_metadata,
+                                                [](const auto& pair)
+                                                {
+                                                    return pair.first == "ARROW:extension:name"
+                                                           && pair.second == EXTENSION_NAME;
+                                                }
+                                            )
+                                            != extension_metadata.end();
+            
+            if (has_extension_name)
+            {
+                proxy.set_metadata(std::make_optional(std::move(extension_metadata)));
+                return;
+            }
         }
+        
+        // Reserve space for new entries
+        extension_metadata.reserve(extension_metadata.size() + 2);
+        extension_metadata.emplace_back("ARROW:extension:name", std::string(EXTENSION_NAME));
+        extension_metadata.emplace_back(
+            "ARROW:extension:metadata",
+            tensor_metadata.to_json()
+        );
 
-        proxy.set_metadata(std::make_optional(extension_metadata));
+        proxy.set_metadata(std::make_optional(std::move(extension_metadata)));
     }
 
     fixed_shape_tensor_extension::metadata fixed_shape_tensor_extension::extract_metadata(
@@ -384,7 +304,6 @@ namespace sparrow_extensions
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
         SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
 
-        // Add extension metadata to the storage using array_access
         fixed_shape_tensor_extension::init(
             sparrow::detail::array_access::get_arrow_proxy(m_storage),
             m_metadata
@@ -404,7 +323,6 @@ namespace sparrow_extensions
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
         SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
 
-        // Get the proxy and set name/metadata
         auto& proxy = sparrow::detail::array_access::get_arrow_proxy(m_storage);
         proxy.set_name(name);
         
@@ -413,7 +331,6 @@ namespace sparrow_extensions
             proxy.set_metadata(std::make_optional(*arrow_metadata));
         }
 
-        // Add extension metadata
         fixed_shape_tensor_extension::init(proxy, m_metadata);
     }
 

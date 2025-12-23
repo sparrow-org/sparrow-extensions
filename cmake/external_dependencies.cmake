@@ -78,7 +78,6 @@ if(NOT TARGET sparrow::sparrow)
     add_library(sparrow::sparrow ALIAS sparrow)
 endif()
 
-# add sparrow::sparrow to SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES list
 set(SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES sparrow::sparrow)
 
 find_package_or_fetch(
