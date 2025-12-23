@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <numeric>
-#include <sstream>
 #include <stdexcept>
 
 #include <simdjson.h>
