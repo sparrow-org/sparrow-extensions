@@ -7,7 +7,7 @@ dependencies:
   - ninja
   - cxx-compiler
   # Libraries dependencies
-  - nlohmann_json
+  - simdjson
   - sparrow-devel >=1.4.0
   # Testing dependencies
   - doctest
