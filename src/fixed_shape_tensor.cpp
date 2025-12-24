@@ -20,10 +20,10 @@
 
 #include <simdjson.h>
 
+#include "sparrow/array.hpp"
 #include "sparrow/layout/array_access.hpp"
 #include "sparrow/layout/array_registry.hpp"
 #include "sparrow/utils/contracts.hpp"
-#include "sparrow/array.hpp"
 
 #include "sparrow_extensions/config/config.hpp"
 
@@ -32,21 +32,28 @@ namespace sparrow_extensions
     namespace
     {
         // JSON serialization size estimation constants
-        constexpr std::size_t json_base_size = 10;              // {"shape":[]}
-        constexpr std::size_t json_integer_avg_size = 10;       // Average size per integer
-        constexpr std::size_t json_dim_names_overhead = 15;     // ,"dim_names":[]
-        constexpr std::size_t json_string_overhead = 3;         // "name",
-        constexpr std::size_t json_permutation_overhead = 17;   // ,"permutation":[]
-        
+        constexpr std::size_t json_base_size = 10;             // {"shape":[]}
+        constexpr std::size_t json_integer_avg_size = 10;      // Average size per integer
+        constexpr std::size_t json_dim_names_overhead = 15;    // ,"dim_names":[]
+        constexpr std::size_t json_string_overhead = 3;        // "name",
+        constexpr std::size_t json_permutation_overhead = 17;  // ,"permutation":[]
+
         // JSON parsing capacity hints
-        constexpr std::size_t typical_tensor_dimensions = 8;    // Typical tensor rank (2-4 dims, reserve 8)
+        constexpr std::size_t typical_tensor_dimensions = 8;  // Typical tensor rank (2-4 dims, reserve 8)
     }
 
     // Metadata implementation
     bool fixed_shape_tensor_extension::metadata::is_valid() const
     {
         // Shape must not be empty and all dimensions must be positive
-        if (shape.empty() || !std::ranges::all_of(shape, [](auto dim) { return dim > 0; }))
+        if (shape.empty()
+            || !std::ranges::all_of(
+                shape,
+                [](auto dim)
+                {
+                    return dim > 0;
+                }
+            ))
         {
             return false;
         }
@@ -71,7 +78,8 @@ namespace sparrow_extensions
             std::vector<bool> seen(perm.size(), false);
             for (const auto idx : perm)
             {
-                if (idx < 0 || static_cast<std::size_t>(idx) >= perm.size() || seen[static_cast<std::size_t>(idx)])
+                if (idx < 0 || static_cast<std::size_t>(idx) >= perm.size()
+                    || seen[static_cast<std::size_t>(idx)])
                 {
                     return false;
                 }
@@ -85,12 +93,7 @@ namespace sparrow_extensions
 
     std::int64_t fixed_shape_tensor_extension::metadata::compute_size() const
     {
-        return std::reduce(
-            shape.begin(),
-            shape.end(),
-            std::int64_t{1},
-            std::multiplies<>{}
-        );
+        return std::reduce(shape.begin(), shape.end(), std::int64_t{1}, std::multiplies<>{});
     }
 
     std::string fixed_shape_tensor_extension::metadata::to_json() const
@@ -110,17 +113,20 @@ namespace sparrow_extensions
         {
             estimated_size += json_permutation_overhead + permutation->size() * json_integer_avg_size;
         }
-        
+
         std::string result;
         result.reserve(estimated_size);
-        
+
         auto serialize_array = [&result](const auto& arr, auto&& formatter)
         {
             result += '[';
             bool first = true;
             for (const auto& item : arr)
             {
-                if (!first) result += ',';
+                if (!first)
+                {
+                    result += ',';
+                }
                 first = false;
                 formatter(item);
             }
@@ -128,31 +134,46 @@ namespace sparrow_extensions
         };
 
         result += "{\"shape\":";
-        serialize_array(shape, [&result](const auto& val) { result += std::to_string(val); });
+        serialize_array(
+            shape,
+            [&result](const auto& val)
+            {
+                result += std::to_string(val);
+            }
+        );
 
         if (dim_names.has_value())
         {
             result += ",\"dim_names\":";
-            serialize_array(*dim_names, [&result](const auto& val) { 
-                result += '\"';
-                result += val;
-                result += '\"';
-            });
+            serialize_array(
+                *dim_names,
+                [&result](const auto& val)
+                {
+                    result += '\"';
+                    result += val;
+                    result += '\"';
+                }
+            );
         }
 
         if (permutation.has_value())
         {
             result += ",\"permutation\":";
-            serialize_array(*permutation, [&result](const auto& val) { result += std::to_string(val); });
+            serialize_array(
+                *permutation,
+                [&result](const auto& val)
+                {
+                    result += std::to_string(val);
+                }
+            );
         }
 
         result += '}';
         return result;
     }
 
-    fixed_shape_tensor_extension::metadata fixed_shape_tensor_extension::metadata::from_json(
-        std::string_view json
-    )
+    fixed_shape_tensor_extension::metadata
+    fixed_shape_tensor_extension::metadata::from_json(std::string_view json)
     {
         auto parse_int_array = [](simdjson::ondemand::array arr) -> std::vector<std::int64_t>
         {
@@ -179,37 +200,43 @@ namespace sparrow_extensions
         try
         {
             metadata result;
-            
+
             simdjson::ondemand::parser parser;
             simdjson::padded_string padded_json(json);
             simdjson::ondemand::document doc = parser.iterate(padded_json);
-            
+
             // Parse shape (required)
-            result.shape = parse_int_array(doc["shape"].get_array());
-            
-            if (result.shape.empty())
+            auto shape_field = doc["shape"];
+            if (shape_field.error() != simdjson::SUCCESS)
             {
                 throw std::runtime_error("Missing required 'shape' field");
             }
-            
+
+            result.shape = parse_int_array(shape_field.get_array());
+
+            if (result.shape.empty())
+            {
+                throw std::runtime_error("'shape' field cannot be empty");
+            }
+
             // Parse optional fields
             auto dim_names_field = doc["dim_names"];
             if (dim_names_field.error() == simdjson::SUCCESS)
             {
                 result.dim_names = parse_string_array(dim_names_field.get_array());
             }
-            
+
             auto permutation_field = doc["permutation"];
             if (permutation_field.error() == simdjson::SUCCESS)
             {
                 result.permutation = parse_int_array(permutation_field.get_array());
             }
-            
+
             if (!result.is_valid())
             {
                 throw std::runtime_error("Invalid metadata");
             }
-            
+
             return result;
         }
         catch (const simdjson::simdjson_error& e)
@@ -218,21 +245,18 @@ namespace sparrow_extensions
         }
     }
 
-    void fixed_shape_tensor_extension::init(
-        sparrow::arrow_proxy& proxy,
-        const metadata& tensor_metadata
-    )
+    void fixed_shape_tensor_extension::init(sparrow::arrow_proxy& proxy, const metadata& tensor_metadata)
     {
         SPARROW_ASSERT_TRUE(tensor_metadata.is_valid());
 
         // Get existing metadata
         auto existing_metadata = proxy.metadata();
         std::vector<sparrow::metadata_pair> extension_metadata;
-        
+
         if (existing_metadata.has_value())
         {
             extension_metadata.assign(existing_metadata->begin(), existing_metadata->end());
-            
+
             // Check if extension metadata already exists
             const bool has_extension_name = std::ranges::find_if(
                                                 extension_metadata,
@@ -243,28 +267,24 @@ namespace sparrow_extensions
                                                 }
                                             )
                                             != extension_metadata.end();
-            
+
             if (has_extension_name)
             {
                 proxy.set_metadata(std::make_optional(std::move(extension_metadata)));
                 return;
             }
         }
-        
+
         // Reserve space for new entries
         extension_metadata.reserve(extension_metadata.size() + 2);
         extension_metadata.emplace_back("ARROW:extension:name", std::string(EXTENSION_NAME));
-        extension_metadata.emplace_back(
-            "ARROW:extension:metadata",
-            tensor_metadata.to_json()
-        );
+        extension_metadata.emplace_back("ARROW:extension:metadata", tensor_metadata.to_json());
 
         proxy.set_metadata(std::make_optional(std::move(extension_metadata)));
     }
 
-    fixed_shape_tensor_extension::metadata fixed_shape_tensor_extension::extract_metadata(
-        const sparrow::arrow_proxy& proxy
-    )
+    fixed_shape_tensor_extension::metadata
+    fixed_shape_tensor_extension::extract_metadata(const sparrow::arrow_proxy& proxy)
     {
         const auto metadata_opt = proxy.metadata();
         if (!metadata_opt.has_value())
@@ -303,10 +323,7 @@ namespace sparrow_extensions
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
         SPARROW_ASSERT_TRUE(static_cast<std::int64_t>(list_size) == m_metadata.compute_size());
 
-        fixed_shape_tensor_extension::init(
-            sparrow::detail::array_access::get_arrow_proxy(m_storage),
-            m_metadata
-        );
+        fixed_shape_tensor_extension::init(sparrow::detail::array_access::get_arrow_proxy(m_storage), m_metadata);
     }
 
     fixed_shape_tensor_array::fixed_shape_tensor_array(
@@ -324,7 +341,7 @@ namespace sparrow_extensions
 
         auto& proxy = sparrow::detail::array_access::get_arrow_proxy(m_storage);
         proxy.set_name(name);
-        
+
         if (arrow_metadata.has_value())
         {
             proxy.set_metadata(std::make_optional(*arrow_metadata));
@@ -358,7 +375,8 @@ namespace sparrow_extensions
         return m_storage;
     }
 
-    auto fixed_shape_tensor_array::operator[](size_type i) const -> decltype(std::declval<const sparrow::fixed_sized_list_array&>()[i])
+    auto fixed_shape_tensor_array::operator[](size_type i) const
+        -> decltype(std::declval<const sparrow::fixed_sized_list_array&>()[i])
     {
         return m_storage[i];
     }
