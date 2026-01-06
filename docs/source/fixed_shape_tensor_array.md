@@ -338,14 +338,14 @@ Creates a tensor array where some tensors may be null.
 ### 5. Complete Constructor
 
 ```cpp
-template<typename T, sparrow::mpl::validity_bitmap_input VB, sparrow::mpl::input_metadata_container M>
+template<sparrow::mpl::validity_bitmap_input VB, sparrow::mpl::input_metadata_container METADATA_RANGE>
 fixed_shape_tensor_array(
     std::uint64_t list_size,
     sparrow::array&& flat_values,
     const metadata_type& tensor_metadata,
     VB&& validity,
     std::string_view name,
-    M&& arrow_metadata = std::nullopt
+    METADATA_RANGE&& arrow_metadata = std::nullopt
 );
 ```
 

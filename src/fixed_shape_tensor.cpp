@@ -414,7 +414,7 @@ namespace sparrow_extensions
         return m_storage.begin();
     }
 
-    auto fixed_shape_tensor_array::end() const-> const_iterator
+    auto fixed_shape_tensor_array::end() const -> const_iterator
     {
         return m_storage.end();
     }
