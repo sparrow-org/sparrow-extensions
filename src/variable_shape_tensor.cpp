@@ -483,19 +483,7 @@ namespace sparrow_extensions
 
     bool variable_shape_tensor_array::is_valid() const
     {
-        // Check that we have exactly 2 children (data and shape)
-        if (m_storage.children_count() != 2)
-        {
-            return false;
-        }
-        
-        // Check that metadata is valid
-        if (!m_metadata.is_valid())
-        {
-            return false;
-        }
-        
-        return true;
+        return m_storage.children_count() == 2 && m_metadata.is_valid();
     }
 
 }  // namespace sparrow_extensions
