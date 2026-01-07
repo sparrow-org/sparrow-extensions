@@ -259,13 +259,6 @@ namespace sparrow_extensions
             std::optional<METADATA_RANGE> arrow_metadata = std::nullopt
         );
 
-        // Default special members
-        fixed_shape_tensor_array(const fixed_shape_tensor_array&) = default;
-        fixed_shape_tensor_array& operator=(const fixed_shape_tensor_array&) = default;
-        fixed_shape_tensor_array(fixed_shape_tensor_array&&) noexcept = default;
-        fixed_shape_tensor_array& operator=(fixed_shape_tensor_array&&) noexcept = default;
-        ~fixed_shape_tensor_array() = default;
-
         /**
          * @brief Returns the number of tensors in the array.
          */
