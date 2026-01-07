@@ -153,6 +153,7 @@ namespace sparrow_extensions
         using const_reference = sparrow::nullable<inner_const_reference, bitmap_const_reference>;
 
         using const_iterator = sparrow::fixed_sized_list_array::const_iterator;
+        using const_reverse_iterator = sparrow::fixed_sized_list_array::const_reverse_iterator;
 
         /**
          * @brief Constructs a fixed shape tensor array from an arrow proxy.
@@ -362,6 +363,26 @@ namespace sparrow_extensions
          * @brief Returns const iterator to the end.
          */
         [[nodiscard]] const_iterator cend() const;
+
+        /**
+         * @brief Returns reverse iterator to the beginning.
+         */
+        [[nodiscard]] const_reverse_iterator rbegin() const;
+
+        /**
+         * @brief Returns reverse iterator to the end.
+         */
+        [[nodiscard]] const_reverse_iterator rend() const;
+
+        /**
+         * @brief Returns const reverse iterator to the beginning.
+         */
+        [[nodiscard]] const_reverse_iterator crbegin() const;
+
+        /**
+         * @brief Returns const reverse iterator to the end.
+         */
+        [[nodiscard]] const_reverse_iterator crend() const;
 
     private:
 

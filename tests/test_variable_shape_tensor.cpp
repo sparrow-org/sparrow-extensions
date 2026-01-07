@@ -21,6 +21,7 @@
 #include "sparrow/array.hpp"
 #include "sparrow/list_array.hpp"
 #include "sparrow/primitive_array.hpp"
+#include "sparrow/record_batch.hpp"
 
 #include "sparrow_extensions/variable_shape_tensor.hpp"
 
@@ -803,6 +804,115 @@ namespace sparrow_extensions
             {
                 auto distance = std::distance(tensor_array.begin(), tensor_array.end());
                 CHECK_EQ(static_cast<size_t>(distance), tensor_array.size());
+            }
+
+            SUBCASE("rbegin and rend")
+            {
+                auto it_rbegin = tensor_array.rbegin();
+                auto it_rend = tensor_array.rend();
+                CHECK(it_rbegin != it_rend);
+            }
+
+            SUBCASE("crbegin and crend")
+            {
+                auto it_rbegin = tensor_array.crbegin();
+                auto it_rend = tensor_array.crend();
+                CHECK(it_rbegin != it_rend);
+            }
+
+            SUBCASE("reverse iteration")
+            {
+                std::vector<size_t> indices;
+                size_t idx = 0;
+                for (auto it = tensor_array.rbegin(); it != tensor_array.rend(); ++it)
+                {
+                    indices.push_back(idx++);
+                }
+                CHECK_EQ(indices.size(), tensor_array.size());
+            }
+
+            SUBCASE("reverse iterator distance")
+            {
+                auto distance = std::distance(tensor_array.rbegin(), tensor_array.rend());
+                CHECK_EQ(static_cast<size_t>(distance), tensor_array.size());
+            }
+        }
+
+        TEST_CASE("record_batch with tensor arrays")
+        {
+            SUBCASE("tensor arrays in record batch")
+            {
+                // Create tensor arrays - each tensor has variable shape
+                const std::uint64_t ndim = 2;
+                const std::size_t num_tensors = 4;
+                
+                // Create first tensor column (images) with shapes [2,3], [1,4], [3,2], [2,2]
+                sparrow::primitive_array<float> image_flat_data({
+                    1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f,        // tensor 0: shape [2,3]
+                    7.0f, 8.0f, 9.0f, 10.0f,                    // tensor 1: shape [1,4]
+                    11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f,  // tensor 2: shape [3,2]
+                    17.0f, 18.0f, 19.0f, 20.0f                  // tensor 3: shape [2,2]
+                });
+                std::vector<std::size_t> image_offsets = {0, 6, 10, 16, 20};
+                sparrow::list_array image_data(sparrow::array(std::move(image_flat_data)), std::move(image_offsets));
+                
+                sparrow::primitive_array<std::int32_t> image_flat_shapes({2, 3, 1, 4, 3, 2, 2, 2});
+                sparrow::fixed_sized_list_array image_shapes(ndim, sparrow::array(std::move(image_flat_shapes)));
+                
+                metadata image_meta{std::nullopt, std::nullopt, std::nullopt};
+                variable_shape_tensor_array image_tensors(
+                    ndim,
+                    sparrow::array(std::move(image_data)),
+                    sparrow::array(std::move(image_shapes)),
+                    image_meta
+                );
+                
+                // Create second tensor column (features) with different shapes
+                sparrow::primitive_array<float> feature_flat_data({
+                    100.0f, 101.0f,                // tensor 0: shape [2,1]
+                    102.0f, 103.0f, 104.0f,        // tensor 1: shape [1,3]
+                    105.0f, 106.0f, 107.0f, 108.0f, // tensor 2: shape [2,2]
+                    109.0f, 110.0f, 111.0f, 112.0f, 113.0f, 114.0f  // tensor 3: shape [3,2]
+                });
+                std::vector<std::size_t> feature_offsets = {0, 2, 5, 9, 15};
+                sparrow::list_array feature_data(sparrow::array(std::move(feature_flat_data)), std::move(feature_offsets));
+                
+                sparrow::primitive_array<std::int32_t> feature_flat_shapes({2, 1, 1, 3, 2, 2, 3, 2});
+                sparrow::fixed_sized_list_array feature_shapes(ndim, sparrow::array(std::move(feature_flat_shapes)));
+                
+                metadata feature_meta{std::nullopt, std::nullopt, std::nullopt};
+                variable_shape_tensor_array feature_tensors(
+                    ndim,
+                    sparrow::array(std::move(feature_data)),
+                    sparrow::array(std::move(feature_shapes)),
+                    feature_meta
+                );
+                
+                // Create ID column
+                std::vector<int32_t> ids{0, 1, 2, 3};
+                sparrow::primitive_array<int32_t> id_array(ids);
+                
+                // Create record batch
+                std::vector<std::string> column_names{"id", "images", "features"};
+                std::vector<sparrow::array> columns;
+                columns.push_back(sparrow::array(std::move(id_array)));
+                columns.push_back(sparrow::array(std::move(image_tensors)));
+                columns.push_back(sparrow::array(std::move(feature_tensors)));
+                
+                sparrow::record_batch batch(std::move(column_names), std::move(columns), "tensor_batch");
+                
+                // Verify batch structure
+                CHECK_EQ(batch.nb_columns(), 3);
+                CHECK_EQ(batch.nb_rows(), num_tensors);
+                CHECK(batch.name() == "tensor_batch");
+                
+                // Verify column access
+                CHECK(batch.contains_column("id"));
+                CHECK(batch.contains_column("images"));
+                CHECK(batch.contains_column("features"));
+                CHECK_EQ(batch.get_column("id").size(), num_tensors);
+                CHECK_EQ(batch.get_column("images").size(), num_tensors);
+                CHECK_EQ(batch.get_column("features").size(), num_tensors);
             }
         }
     }

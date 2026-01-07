@@ -429,6 +429,26 @@ namespace sparrow_extensions
         return m_storage.cend();
     }
 
+    auto fixed_shape_tensor_array::rbegin() const -> const_reverse_iterator
+    {
+        return m_storage.rbegin();
+    }
+
+    auto fixed_shape_tensor_array::rend() const -> const_reverse_iterator
+    {
+        return m_storage.rend();
+    }
+
+    auto fixed_shape_tensor_array::crbegin() const -> const_reverse_iterator
+    {
+        return m_storage.crbegin();
+    }
+
+    auto fixed_shape_tensor_array::crend() const -> const_reverse_iterator
+    {
+        return m_storage.crend();
+    }
+
     void fixed_shape_tensor_array::finalize_construction()
     {
         fixed_shape_tensor_extension::init(sparrow::detail::array_access::get_arrow_proxy(m_storage), m_metadata);

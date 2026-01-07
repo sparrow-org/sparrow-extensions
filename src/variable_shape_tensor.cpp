@@ -32,20 +32,20 @@ namespace sparrow_extensions
     namespace
     {
         // JSON serialization size estimation constants
-        constexpr std::size_t json_base_size = 2;              // {}
-        constexpr std::size_t json_integer_avg_size = 10;      // Average size per integer
-        constexpr std::size_t json_dim_names_overhead = 15;    // ,"dim_names":[]
-        constexpr std::size_t json_string_overhead = 3;        // "name",
-        constexpr std::size_t json_permutation_overhead = 17;  // ,"permutation":[]
+        constexpr std::size_t json_base_size = 2;                // {}
+        constexpr std::size_t json_integer_avg_size = 10;        // Average size per integer
+        constexpr std::size_t json_dim_names_overhead = 15;      // ,"dim_names":[]
+        constexpr std::size_t json_string_overhead = 3;          // "name",
+        constexpr std::size_t json_permutation_overhead = 17;    // ,"permutation":[]
         constexpr std::size_t json_uniform_shape_overhead = 18;  // ,"uniform_shape":[]
-        constexpr std::size_t json_null_size = 4;              // null
+        constexpr std::size_t json_null_size = 4;                // null
 
         // JSON parsing capacity hints
         constexpr std::size_t typical_tensor_dimensions = 8;  // Typical tensor rank (2-4 dims, reserve 8)
     }
 
     // Metadata implementation
-    
+
     std::optional<std::size_t> variable_shape_tensor_extension::metadata::get_ndim() const
     {
         if (dim_names.has_value())
@@ -108,7 +108,10 @@ namespace sparrow_extensions
             // Check if any specified dimension (non-null) is non-positive
             const auto has_invalid_dim = std::ranges::any_of(
                 *uniform_shape,
-                [](const auto& dim) { return dim.has_value() && *dim <= 0; }
+                [](const auto& dim)
+                {
+                    return dim.has_value() && *dim <= 0;
+                }
             );
             if (has_invalid_dim)
             {
@@ -129,7 +132,7 @@ namespace sparrow_extensions
 
         // Pre-calculate approximate size to minimize allocations
         std::size_t estimated_size = json_base_size;
-        
+
         if (dim_names.has_value())
         {
             estimated_size += json_dim_names_overhead;
@@ -138,12 +141,12 @@ namespace sparrow_extensions
                 estimated_size += name.size() + json_string_overhead;
             }
         }
-        
+
         if (permutation.has_value())
         {
             estimated_size += json_permutation_overhead + permutation->size() * json_integer_avg_size;
         }
-        
+
         if (uniform_shape.has_value())
         {
             estimated_size += json_uniform_shape_overhead;
@@ -177,9 +180,12 @@ namespace sparrow_extensions
 
         if (dim_names.has_value())
         {
-            if (!first_field) result += ',';
+            if (!first_field)
+            {
+                result += ',';
+            }
             first_field = false;
-            
+
             result += "\"dim_names\":";
             serialize_array(
                 *dim_names,
@@ -194,9 +200,12 @@ namespace sparrow_extensions
 
         if (permutation.has_value())
         {
-            if (!first_field) result += ',';
+            if (!first_field)
+            {
+                result += ',';
+            }
             first_field = false;
-            
+
             result += "\"permutation\":";
             serialize_array(
                 *permutation,
@@ -209,9 +218,12 @@ namespace sparrow_extensions
 
         if (uniform_shape.has_value())
         {
-            if (!first_field) result += ',';
+            if (!first_field)
+            {
+                result += ',';
+            }
             first_field = false;
-            
+
             result += "\"uniform_shape\":";
             serialize_array(
                 *uniform_shape,
@@ -347,9 +359,12 @@ namespace sparrow_extensions
         // Find the extension metadata entry
         const auto it = std::ranges::find_if(
             *metadata_opt,
-            [](const auto& pair) { return pair.first == "ARROW:extension:metadata"; }
+            [](const auto& pair)
+            {
+                return pair.first == "ARROW:extension:metadata";
+            }
         );
-        
+
         return (it != metadata_opt->end()) ? metadata::from_json((*it).second) : metadata{};
     }
 
@@ -430,7 +445,7 @@ namespace sparrow_extensions
     )
     {
         SPARROW_ASSERT_TRUE(m_metadata.is_valid());
-        
+
         // Validate ndim if metadata provides it
         if (const auto metadata_ndim = m_metadata.get_ndim(); metadata_ndim.has_value())
         {
@@ -438,12 +453,12 @@ namespace sparrow_extensions
         }
 
         auto& proxy = sparrow::detail::array_access::get_arrow_proxy(m_storage);
-        
+
         if (name.has_value())
         {
             proxy.set_name(*name);
         }
-        
+
         if (arrow_metadata != nullptr && arrow_metadata->has_value())
         {
             proxy.set_metadata(std::make_optional(**arrow_metadata));
@@ -484,6 +499,46 @@ namespace sparrow_extensions
     bool variable_shape_tensor_array::is_valid() const
     {
         return m_storage.children_count() == 2 && m_metadata.is_valid();
+    }
+
+    auto variable_shape_tensor_array::begin() const -> const_iterator
+    {
+        return m_storage.begin();
+    }
+
+    auto variable_shape_tensor_array::end() const -> const_iterator
+    {
+        return m_storage.end();
+    }
+
+    auto variable_shape_tensor_array::cbegin() const -> const_iterator
+    {
+        return m_storage.cbegin();
+    }
+
+    auto variable_shape_tensor_array::cend() const -> const_iterator
+    {
+        return m_storage.cend();
+    }
+
+    auto variable_shape_tensor_array::rbegin() const -> const_reverse_iterator
+    {
+        return m_storage.rbegin();
+    }
+
+    auto variable_shape_tensor_array::rend() const -> const_reverse_iterator
+    {
+        return m_storage.rend();
+    }
+
+    auto variable_shape_tensor_array::crbegin() const -> const_reverse_iterator
+    {
+        return m_storage.crbegin();
+    }
+
+    auto variable_shape_tensor_array::crend() const -> const_reverse_iterator
+    {
+        return m_storage.crend();
     }
 
 }  // namespace sparrow_extensions

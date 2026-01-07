@@ -4,6 +4,7 @@
 #include <doctest/doctest.h>
 
 #include <sparrow/array.hpp>
+#include <sparrow/record_batch.hpp>
 
 #include <sparrow/primitive_array.hpp>
 #include <sparrow/types/data_type.hpp>
@@ -1004,6 +1005,64 @@ namespace sparrow_extensions
 
                 auto distance = std::distance(tensor_array.begin(), tensor_array.end());
                 CHECK_EQ(static_cast<size_t>(distance), tensor_array.size());
+            }
+        }
+
+        TEST_CASE("record_batch with tensor arrays")
+        {
+            SUBCASE("tensor arrays in record batch")
+            {
+                // Create tensor arrays - each tensor has shape [2, 3]
+                const std::vector<std::int64_t> shape{2, 3};
+                metadata tensor_meta{shape, std::nullopt, std::nullopt};
+                const std::uint64_t list_size = static_cast<std::uint64_t>(tensor_meta.compute_size());
+                const std::size_t num_tensors = 4;
+                
+                // Create first tensor column (images)
+                std::vector<float> image_data(num_tensors * static_cast<std::size_t>(list_size));
+                std::iota(image_data.begin(), image_data.end(), 0.0f);
+                sparrow::primitive_array<float> image_values(image_data);
+                fixed_shape_tensor_array image_tensors(
+                    list_size,
+                    sparrow::array(std::move(image_values)),
+                    tensor_meta
+                );
+                
+                // Create second tensor column (features)
+                std::vector<float> feature_data(num_tensors * static_cast<std::size_t>(list_size));
+                std::iota(feature_data.begin(), feature_data.end(), 100.0f);
+                sparrow::primitive_array<float> feature_values(feature_data);
+                fixed_shape_tensor_array feature_tensors(
+                    list_size,
+                    sparrow::array(std::move(feature_values)),
+                    tensor_meta
+                );
+                
+                // Create ID column
+                std::vector<int32_t> ids{0, 1, 2, 3};
+                sparrow::primitive_array<int32_t> id_array(ids);
+                
+                // Create record batch
+                std::vector<std::string> column_names{"id", "images", "features"};
+                std::vector<sparrow::array> columns;
+                columns.push_back(sparrow::array(std::move(id_array)));
+                columns.push_back(sparrow::array(std::move(image_tensors)));
+                columns.push_back(sparrow::array(std::move(feature_tensors)));
+                
+                sparrow::record_batch batch(std::move(column_names), std::move(columns), "tensor_batch");
+                
+                // Verify batch structure
+                CHECK_EQ(batch.nb_columns(), 3);
+                CHECK_EQ(batch.nb_rows(), num_tensors);
+                CHECK(batch.name() == "tensor_batch");
+                
+                // Verify column access
+                CHECK(batch.contains_column("id"));
+                CHECK(batch.contains_column("images"));
+                CHECK(batch.contains_column("features"));
+                CHECK_EQ(batch.get_column("id").size(), num_tensors);
+                CHECK_EQ(batch.get_column("images").size(), num_tensors);
+                CHECK_EQ(batch.get_column("features").size(), num_tensors);
             }
         }
     }

@@ -170,6 +170,9 @@ namespace sparrow_extensions
         using value_type = sparrow::nullable<inner_value_type>;
         using const_reference = sparrow::nullable<inner_const_reference, bitmap_const_reference>;
 
+        using const_iterator = sparrow::struct_array::const_iterator;
+        using const_reverse_iterator = sparrow::struct_array::const_reverse_iterator;
+
         /**
          * @brief Constructs a variable shape tensor array from an arrow proxy.
          *
@@ -430,40 +433,54 @@ namespace sparrow_extensions
          *
          * @return Iterator to the first tensor
          */
-        [[nodiscard]] auto begin() const
-        {
-            return m_storage.begin();
-        }
+        [[nodiscard]] const_iterator begin() const;
 
         /**
          * @brief Returns iterator to the end of the tensor array.
          *
          * @return Iterator past the last tensor
          */
-        [[nodiscard]] auto end() const
-        {
-            return m_storage.end();
-        }
+        [[nodiscard]] const_iterator end() const;
 
         /**
          * @brief Returns const iterator to the beginning of the tensor array.
          *
          * @return Const iterator to the first tensor
          */
-        [[nodiscard]] auto cbegin() const
-        {
-            return m_storage.cbegin();
-        }
-
+        [[nodiscard]] const_iterator cbegin() const;
         /**
          * @brief Returns const iterator to the end of the tensor array.
          *
          * @return Const iterator past the last tensor
          */
-        [[nodiscard]] auto cend() const
-        {
-            return m_storage.cend();
-        }
+        [[nodiscard]] const_iterator cend() const;
+
+        /**
+         * @brief Returns reverse iterator to the beginning of the reversed tensor array.
+         *
+         * @return Reverse iterator to the first tensor in reverse order
+         */
+        [[nodiscard]] const_reverse_iterator rbegin() const;
+
+        /**
+         * @brief Returns reverse iterator to the end of the reversed tensor array.
+         *
+         * @return Reverse iterator past the last tensor in reverse order
+         */
+        [[nodiscard]] const_reverse_iterator rend() const;
+
+        /**
+         * @brief Returns const reverse iterator to the beginning of the reversed tensor array.
+         *
+         * @return Const reverse iterator to the first tensor in reverse order
+         */
+        [[nodiscard]] const_reverse_iterator crbegin() const;
+        /**
+         * @brief Returns const reverse iterator to the end of the reversed tensor array.
+         *
+         * @return Const reverse iterator past the last tensor in reverse order
+         */
+        [[nodiscard]] const_reverse_iterator crend() const;
 
     private:
 
