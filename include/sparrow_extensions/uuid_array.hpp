@@ -86,6 +86,15 @@ namespace sparrow_extensions
 
 }  // namespace sparrow_extensions
 
+namespace sparrow::copy_tracker
+{
+    template <>
+    inline std::string key<sparrow_extensions::uuid_array>()
+    {
+        return "uuid_array";
+    }
+}
+
 namespace sparrow::detail
 {
     template <>

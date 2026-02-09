@@ -8,7 +8,7 @@ dependencies:
   - cxx-compiler
   # Libraries dependencies
   - simdjson
-  - sparrow-devel >=1.4.0
+  - sparrow-devel >=2.3.0
   # Testing dependencies
   - doctest
   # Documentation dependencies
