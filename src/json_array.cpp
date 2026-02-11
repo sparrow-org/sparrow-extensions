@@ -18,28 +18,6 @@
 
 #include "sparrow_extensions/config/config.hpp"
 
-// Define copy_tracker::key specializations
-namespace sparrow::copy_tracker
-{
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::json_array>()
-    {
-        return "json_array";
-    }
-
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::big_json_array>()
-    {
-        return "big_json_array";
-    }
-
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::json_view_array>()
-    {
-        return "json_view_array";
-    }
-}
-
 namespace sparrow_extensions::detail
 {
     SPARROW_EXTENSIONS_API const bool json_arrays_registered = []()

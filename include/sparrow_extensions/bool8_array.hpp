@@ -42,8 +42,12 @@ namespace sparrow_extensions
 
 namespace sparrow::copy_tracker
 {
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::bool8_array>();
+    template <typename T>
+        requires (mpl::is_type_instance_of_v<T, primitive_array_impl> && std::same_as<T, sparrow_extensions::bool8_array>)
+    inline std::string key()
+    {
+        return "bool8_array";
+    }
 }
 
 #if defined(__cpp_lib_format)

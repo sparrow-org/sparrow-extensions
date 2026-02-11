@@ -97,14 +97,26 @@ namespace sparrow_extensions
 
 namespace sparrow::copy_tracker
 {
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::json_array>();
+    template <typename T>
+        requires (mpl::is_type_instance_of_v<T, variable_size_binary_array_impl> && std::same_as<T, sparrow_extensions::json_array>)
+    inline std::string key()
+    {
+        return "json_array";
+    }
 
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::big_json_array>();
+    template <typename T>
+        requires (mpl::is_type_instance_of_v<T, variable_size_binary_array_impl> && std::same_as<T, sparrow_extensions::big_json_array>)
+    inline std::string key()
+    {
+        return "big_json_array";
+    }
 
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::json_view_array>();
+    template <typename T>
+        requires (mpl::is_type_instance_of_v<T, variable_size_binary_view_array_impl> && std::same_as<T, sparrow_extensions::json_view_array>)
+    inline std::string key()
+    {
+        return "json_view_array";
+    }
 }
 
 namespace sparrow::detail

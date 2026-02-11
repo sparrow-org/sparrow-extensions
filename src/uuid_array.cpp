@@ -18,16 +18,6 @@
 
 #include "sparrow_extensions/config/config.hpp"
 
-// Define copy_tracker::key specialization
-namespace sparrow::copy_tracker
-{
-    template <>
-    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::uuid_array>()
-    {
-        return "uuid_array";
-    }
-}
-
 namespace sparrow::detail
 {
     SPARROW_EXTENSIONS_API const bool uuid_array_registered = []()

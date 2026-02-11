@@ -84,9 +84,13 @@ find_package_or_fetch(
     PACKAGE_NAME simdjson
     GIT_REPOSITORY https://github.com/simdjson/simdjson.git
     TAG v4.2.4
+    CMAKE_ARGS
+        CMAKE_POSITION_INDEPENDENT_CODE=ON
 )
 
-set(SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES ${SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES} simdjson::simdjson)
+# simdjson is only used in implementation files (not public headers),
+# so it should be linked PRIVATELY in the main CMakeLists.txt
+# DO NOT add to SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES
 
 if(SPARROW_EXTENSIONS_BUILD_TESTS)
     find_package_or_fetch(
