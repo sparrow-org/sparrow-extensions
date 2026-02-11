@@ -17,6 +17,8 @@
 #include "sparrow/primitive_array.hpp"
 #include "sparrow/utils/extension.hpp"
 
+#include "sparrow_extensions/config/config.hpp"
+
 namespace sparrow_extensions
 {
     /**
@@ -41,7 +43,7 @@ namespace sparrow_extensions
 namespace sparrow::copy_tracker
 {
     template <>
-    std::string key<sparrow_extensions::bool8_array>();
+    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::bool8_array>();
 }
 
 #if defined(__cpp_lib_format)

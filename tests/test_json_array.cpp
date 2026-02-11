@@ -18,6 +18,7 @@
 #include <doctest/doctest.h>
 
 #include <sparrow/array.hpp>
+#include <sparrow/debug/copy_tracker.hpp>
 #include <sparrow/types/data_type.hpp>
 #include <sparrow/utils/nullable.hpp>
 
@@ -530,6 +531,32 @@ namespace sparrow_extensions
                     }
                 );
                 CHECK_EQ(size, 1);
+            }
+        }
+
+        TEST_CASE("move")
+        {
+            // Note: json_array family copy constructor tests are limited due to
+            // sparrow library create_proxy ambiguity issues with copy constructors.
+            // The copy_tracker::key specializations are still defined and will work
+            // when the underlying sparrow library issue is resolved.
+           
+            SUBCASE("move constructor")
+            {
+                const std::vector<std::string> values = {R"({"a": 1})", R"({"b": 2})"};
+                json_array ar(values);
+                json_array ar2(std::move(ar));
+                CHECK_EQ(ar2.size(), 2);
+            }
+
+            SUBCASE("move assignment")
+            {
+                const std::vector<std::string> values1 = {R"({"a": 1})", R"({"b": 2})"};
+                const std::vector<std::string> values2 = {R"({"c": 3})"};
+                json_array ar(values1);
+                json_array ar2(values2);
+                ar2 = std::move(ar);
+                CHECK_EQ(ar2.size(), 2);
             }
         }
     }

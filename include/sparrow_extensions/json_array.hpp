@@ -18,6 +18,8 @@
 #include "sparrow/variable_size_binary_array.hpp"
 #include "sparrow/variable_size_binary_view_array.hpp"
 
+#include "sparrow_extensions/config/config.hpp"
+
 namespace sparrow_extensions
 {
 
@@ -96,13 +98,13 @@ namespace sparrow_extensions
 namespace sparrow::copy_tracker
 {
     template <>
-    std::string key<sparrow_extensions::json_array>();
+    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::json_array>();
 
     template <>
-    std::string key<sparrow_extensions::big_json_array>();
+    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::big_json_array>();
 
     template <>
-    std::string key<sparrow_extensions::json_view_array>();
+    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::json_view_array>();
 }
 
 namespace sparrow::detail

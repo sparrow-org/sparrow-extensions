@@ -20,6 +20,8 @@
 #include "sparrow/fixed_width_binary_array.hpp"
 #include "sparrow/utils/contracts.hpp"
 
+#include "sparrow_extensions/config/config.hpp"
+
 namespace sparrow_extensions
 {
     /**
@@ -89,7 +91,7 @@ namespace sparrow_extensions
 namespace sparrow::copy_tracker
 {
     template <>
-    std::string key<sparrow_extensions::uuid_array>();
+    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::uuid_array>();
 }
 
 namespace sparrow::detail

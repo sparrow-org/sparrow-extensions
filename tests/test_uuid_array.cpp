@@ -19,6 +19,7 @@
 #include <doctest/doctest.h>
 
 #include <sparrow/array.hpp>
+#include <sparrow/debug/copy_tracker.hpp>
 #include <sparrow/types/data_type.hpp>
 #include <sparrow/utils/nullable.hpp>
 
@@ -517,6 +518,58 @@ namespace sparrow_extensions
                     }
                 );
                 CHECK_EQ(size, 1);
+            }
+        }
+
+        TEST_CASE("copy")
+        {
+            SUBCASE("copy constructor")
+            {
+#ifdef SPARROW_TRACK_COPIES
+                sparrow::copy_tracker::reset(sparrow::copy_tracker::key<uuid_array>());
+#endif
+                auto [ar, expected] = make_array(5);
+                const uuid_array ar2(ar);
+                CHECK_EQ(ar, ar2);
+#ifdef SPARROW_TRACK_COPIES
+                CHECK_EQ(sparrow::copy_tracker::count(sparrow::copy_tracker::key<uuid_array>()), 1);
+#endif
+            }
+
+            SUBCASE("copy assignment")
+            {
+#ifdef SPARROW_TRACK_COPIES
+                sparrow::copy_tracker::reset(sparrow::copy_tracker::key<uuid_array>());
+#endif
+                auto [ar, expected] = make_array(5);
+                auto [ar2, expected2] = make_array(3, 1);
+                CHECK_NE(ar, ar2);
+                ar2 = ar;
+                CHECK_EQ(ar, ar2);
+#ifdef SPARROW_TRACK_COPIES
+                CHECK_EQ(sparrow::copy_tracker::count(sparrow::copy_tracker::key<uuid_array>()), 1);
+#endif
+            }
+        }
+
+        TEST_CASE("move")
+        {
+            SUBCASE("move constructor")
+            {
+                auto [ar, expected] = make_array(5);
+                uuid_array ar2(ar);
+                uuid_array ar3(std::move(ar));
+                CHECK_EQ(ar3, ar2);
+            }
+
+            SUBCASE("move assignment")
+            {
+                auto [ar, expected] = make_array(5);
+                uuid_array ar2(ar);
+                auto [ar3, expected3] = make_array(3, 1);
+                CHECK_NE(ar3, ar2);
+                ar3 = std::move(ar);
+                CHECK_EQ(ar2, ar3);
             }
         }
     }

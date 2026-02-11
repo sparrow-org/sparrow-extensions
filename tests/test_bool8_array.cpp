@@ -17,6 +17,7 @@
 #include <doctest/doctest.h>
 
 #include <sparrow/array.hpp>
+#include <sparrow/debug/copy_tracker.hpp>
 
 #include "metadata_sample.hpp"
 #include "sparrow_extensions/bool8_array.hpp"
@@ -197,33 +198,61 @@ namespace sparrow_extensions
 
         TEST_CASE("copy")
         {
-            const std::vector<bool> values = {true, false, true, false};
-            bool8_array ar(values);
+            SUBCASE("copy constructor")
+            {
+#ifdef SPARROW_TRACK_COPIES
+                sparrow::copy_tracker::reset(sparrow::copy_tracker::key<bool8_array>());
+#endif
+                const std::vector<bool> values = {true, false, true, false};
+                const bool8_array ar(values);
+                const bool8_array ar2(ar);
+                CHECK_EQ(ar, ar2);
+#ifdef SPARROW_TRACK_COPIES
+                CHECK_EQ(sparrow::copy_tracker::count(sparrow::copy_tracker::key<bool8_array>()), 1);
+#endif
+            }
 
-            bool8_array ar2(ar);
-            CHECK_EQ(ar, ar2);
-
-            std::vector<bool> other_values = {false, false};
-            bool8_array ar3(other_values);
-            CHECK_NE(ar, ar3);
-            ar3 = ar;
-            CHECK_EQ(ar, ar3);
+            SUBCASE("copy assignment")
+            {
+#ifdef SPARROW_TRACK_COPIES
+                sparrow::copy_tracker::reset(sparrow::copy_tracker::key<bool8_array>());
+#endif
+                const std::vector<bool> values = {true, false, true, false};
+                const bool8_array ar(values);
+                std::vector<bool> other_values = {false, false};
+                bool8_array ar3(other_values);
+                CHECK_NE(ar, ar3);
+                ar3 = ar;
+                CHECK_EQ(ar, ar3);
+#ifdef SPARROW_TRACK_COPIES
+                CHECK_EQ(sparrow::copy_tracker::count(sparrow::copy_tracker::key<bool8_array>()), 1);
+#endif
+            }
         }
 
         TEST_CASE("move")
         {
-            const std::vector<bool> values = {true, false, true, false};
-            bool8_array ar(values);
-            bool8_array ar2(ar);
+            SUBCASE("move constructor")
+            {
+                const std::vector<bool> values = {true, false, true, false};
+                bool8_array ar(values);
+                bool8_array ar2(ar);
+                bool8_array ar3(std::move(ar));
+                CHECK_EQ(ar2, ar3);
+            }
 
-            bool8_array ar3(std::move(ar));
-            CHECK_EQ(ar2, ar3);
-
-            std::vector<bool> other_values = {false, false};
-            bool8_array ar4(other_values);
-            CHECK_NE(ar2, ar4);
-            ar4 = std::move(ar2);
-            CHECK_EQ(ar3, ar4);
+            SUBCASE("move assignment")
+            {
+                const std::vector<bool> values = {true, false, true, false};
+                bool8_array ar(values);
+                bool8_array ar2(ar);
+                bool8_array ar3(std::move(ar));  // Create ar3 via move
+                std::vector<bool> other_values = {false, false};
+                bool8_array ar4(other_values);
+                CHECK_NE(ar2, ar4);
+                ar4 = std::move(ar2);
+                CHECK_EQ(ar3, ar4);
+            }
         }
 
         TEST_CASE("iterators")
@@ -777,5 +806,7 @@ namespace sparrow_extensions
                 CHECK(not_empty);
             }
         }
+
+
     }
 }
