@@ -93,6 +93,18 @@ namespace sparrow_extensions
         json_extension>;
 }
 
+namespace sparrow::copy_tracker
+{
+    template <>
+    std::string key<sparrow_extensions::json_array>();
+
+    template <>
+    std::string key<sparrow_extensions::big_json_array>();
+
+    template <>
+    std::string key<sparrow_extensions::json_view_array>();
+}
+
 namespace sparrow::detail
 {
     template <>

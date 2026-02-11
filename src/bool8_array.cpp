@@ -18,6 +18,16 @@
 
 #include "sparrow_extensions/config/config.hpp"
 
+// Define copy_tracker::key specialization
+namespace sparrow::copy_tracker
+{
+    template <>
+    SPARROW_EXTENSIONS_API std::string key<sparrow_extensions::bool8_array>()
+    {
+        return "bool8_array";
+    }
+}
+
 namespace sparrow_extensions::detail
 {
     SPARROW_EXTENSIONS_API const bool bool8_array_registered = []()

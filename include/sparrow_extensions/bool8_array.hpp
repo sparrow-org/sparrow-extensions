@@ -38,6 +38,12 @@ namespace sparrow_extensions
     using bool8_array = sparrow::primitive_array<int8_t, sparrow::simple_extension<"arrow.bool8">, bool>;
 }
 
+namespace sparrow::copy_tracker
+{
+    template <>
+    std::string key<sparrow_extensions::bool8_array>();
+}
+
 #if defined(__cpp_lib_format)
 #    include <format>
 
