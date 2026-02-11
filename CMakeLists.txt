@@ -250,7 +250,6 @@ target_include_directories(sparrow-extensions PUBLIC
 set_target_properties(sparrow-extensions PROPERTIES CMAKE_CXX_EXTENSIONS OFF)
 target_compile_features(sparrow-extensions PUBLIC cxx_std_20)
 target_link_libraries(sparrow-extensions PUBLIC ${SPARROW_EXTENSIONS_INTERFACE_DEPENDENCIES})
-# simdjson is PRIVATE because it's only used in .cpp files, not exposed in public headers
 target_link_libraries(sparrow-extensions PRIVATE simdjson::simdjson)
 
 if(ENABLE_COVERAGE)
